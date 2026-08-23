@@ -309,19 +309,24 @@
   loader.setDRACOLoader(dracoLoader);
   loader.load('medallion.glb', function(gltf){
     medallion = gltf.scene;
+    medallion.updateMatrixWorld(true);
 
     var box = new THREE.Box3().setFromObject(medallion);
     var size = new THREE.Vector3();
     box.getSize(size);
     var center = new THREE.Vector3();
     box.getCenter(center);
+
+    var inner = new THREE.Group();
+    inner.add(medallion);
     medallion.position.sub(center);
+
     var maxDim = Math.max(size.x, size.y, size.z);
-    var scale = 2.6 / maxDim;
-    medallion.scale.setScalar(scale);
+    var scale = 2.3 / maxDim;
+    inner.scale.setScalar(scale);
 
     var group = new THREE.Group();
-    group.add(medallion);
+    group.add(inner);
     scene.add(group);
     medallion.userData.group = group;
 
