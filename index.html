@@ -31,6 +31,7 @@
   .font-display{ font-family: 'Cinzel', serif; }
   .font-voice{ font-family: 'EB Garamond', serif; }
 
+  /* ---------- NAV ---------- */
   nav{
     position: sticky;
     top: 0;
@@ -65,6 +66,7 @@
   .btn-join:hover{ filter: brightness(1.12); }
   .nav-toggle{ display: none; }
 
+  /* ---------- HERO ---------- */
   .hero{
     position: relative;
     min-height: 88vh;
@@ -141,6 +143,7 @@
   }
   #medallion-canvas{ width: 100%; height: 100%; display: block; }
 
+  /* ---------- FEATURES ---------- */
   .features{
     position: relative; z-index: 2;
     display: grid;
@@ -266,6 +269,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
 <script>
 (function(){
   var canvas = document.getElementById('medallion-canvas');
@@ -300,6 +304,9 @@
 
   var medallion = null;
   var loader = new THREE.GLTFLoader();
+  var dracoLoader = new THREE.DRACOLoader();
+  dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+  loader.setDRACOLoader(dracoLoader);
   loader.load('medallion.glb', function(gltf){
     medallion = gltf.scene;
 
