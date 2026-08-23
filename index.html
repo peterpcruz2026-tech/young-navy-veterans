@@ -31,7 +31,6 @@
   .font-display{ font-family: 'Cinzel', serif; }
   .font-voice{ font-family: 'EB Garamond', serif; }
 
-  /* ---------- NAV ---------- */
   nav{
     position: sticky;
     top: 0;
@@ -66,7 +65,6 @@
   .btn-join:hover{ filter: brightness(1.12); }
   .nav-toggle{ display: none; }
 
-  /* ---------- HERO ---------- */
   .hero{
     position: relative;
     min-height: 88vh;
@@ -143,7 +141,6 @@
   }
   #medallion-canvas{ width: 100%; height: 100%; display: block; }
 
-  /* ---------- FEATURES ---------- */
   .features{
     position: relative; z-index: 2;
     display: grid;
@@ -219,7 +216,7 @@
 
 <section class="hero">
   <video class="hero-video" autoplay muted loop playsinline poster="">
-    <source src="ship-loop.mp4" type="video/mp4">
+    <source src="ship-loop-seamless.mp4" type="video/mp4">
   </video>
   <div class="hero-scrim"></div>
   <div class="hero-inner">
@@ -332,7 +329,7 @@
   function animate(){
     requestAnimationFrame(animate);
     if(medallion && !reduceMotion){
-      medallion.userData.group.rotation.y += 0.006;
+      medallion.userData.group.rotation.y += 0.018;
     }
     renderer.render(scene, camera);
   }
