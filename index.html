@@ -319,6 +319,7 @@
 -->
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
 <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
 <script>
 (function(){
   var canvas = document.getElementById('medallion-canvas');
@@ -364,6 +365,15 @@
 
   var medallion = null;
   var loader = new THREE.GLTFLoader();
+
+  // medallion.glb was exported with Draco mesh compression, so GLTFLoader
+  // needs a DRACOLoader handed to it to decompress the geometry.
+  // Decoder files are fetched from Google's hosted CDN (no need to
+  // self-host the .wasm/.js decoder).
+  var dracoLoader = new THREE.DRACOLoader();
+  dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+  loader.setDRACOLoader(dracoLoader);
+
   loader.load('medallion.glb', function(gltf){
     medallion = gltf.scene;
 
