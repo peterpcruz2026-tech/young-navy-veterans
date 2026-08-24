@@ -78,7 +78,6 @@
   .hero-scrub-wrap{
     position: relative;
     height: 320vh; /* total scroll distance for the whole anchor-drop sequence */
-    outline: 4px solid yellow; /* TEMP DEBUG — remove once black-bar issue is found */
   }
   .hero{
     position: sticky;
@@ -96,20 +95,17 @@
   }
   .hero-video{
     transition: opacity 0.15s linear;
-    outline: 4px solid red; /* TEMP DEBUG */
   }
   .hero-scrub-canvas{
     opacity: 0;
     transition: opacity 0.15s linear;
     pointer-events: none;
-    outline: 4px solid lime; /* TEMP DEBUG */
   }
   .hero-scrim{
     position: absolute; inset: 0; z-index: 1;
     background:
       linear-gradient(90deg, rgba(6,11,20,0.80) 0%, rgba(6,11,20,0.30) 38%, rgba(6,11,20,0.02) 62%, rgba(6,11,20,0.02) 100%),
       linear-gradient(0deg, rgba(6,11,20,0.55) 0%, rgba(6,11,20,0.05) 25%, rgba(6,11,20,0.05) 72%, rgba(6,11,20,0.25) 100%);
-    outline: 4px solid cyan; /* TEMP DEBUG */
   }
   .hero-inner{
     position: relative; z-index: 2;
@@ -121,7 +117,6 @@
     padding: 48px clamp(20px, 4vw, 48px);
     max-width: 1400px;
     margin: 0 auto;
-    outline: 4px solid magenta; /* TEMP DEBUG */
   }
   .eyebrow{
     display: flex; align-items: center; gap: 12px;
@@ -314,8 +309,16 @@
 
 <footer>&copy; 2026 Young Navy Veterans. Not affiliated with any political party.</footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/loaders/GLTFLoader.js"></script>
+<!--
+  FIX: previously loaded three.min.js from cdnjs and GLTFLoader.js from a
+  separate cdnjs path. Even though both were nominally "r128", cdnjs can
+  serve slightly mismatched builds across its two paths, which produced:
+  "Uncaught TypeError: THREE.GLTFLoader is not a constructor"
+  Pinning both files to the exact same version from the same CDN (unpkg,
+  npm-backed and version-locked) resolves the mismatch.
+-->
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script>
 (function(){
   var canvas = document.getElementById('medallion-canvas');
@@ -326,6 +329,10 @@
   if(typeof THREE === 'undefined'){
     console.error('Medallion: THREE.js failed to load from CDN — check network/ad-blocker. Fallback ring will stay visible.');
     return; // fallback ring stays visible, nothing else to do
+  }
+  if(typeof THREE.GLTFLoader !== 'function'){
+    console.error('Medallion: THREE.GLTFLoader did not load correctly (version mismatch or CDN issue). Fallback ring will stay visible.');
+    return;
   }
 
   var scene = new THREE.Scene();
@@ -424,7 +431,12 @@
    there, scroll position drives which frame from
    frames/anchor-drop/ is drawn, playing out the anchor drop.
 
-   Frame count is auto-detected — no need to hard-code it.
+   NOTE: the frames/anchor-drop/ folder is not yet present in the
+   repo, so frame detection will currently find 0 frames and this
+   whole scrub effect will silently no-op — the hero video will
+   just keep looping normally, even while scrolling. Upload the
+   numbered frame_0001.jpg... sequence to frames/anchor-drop/ to
+   enable it. Frame count is auto-detected — no need to hard-code it.
    Raise FRAME_PROBE_CAP if you ever have more than 300 frames.
    ============================================================ */
 (function(){
