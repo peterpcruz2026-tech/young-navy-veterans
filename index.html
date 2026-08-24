@@ -95,8 +95,6 @@
   }
   .hero-video{
     transition: opacity 0.15s linear;
-    transform: scale(1.2); /* nudges out any baked-in edge padding from the source video */
-    transform-origin: center;
   }
   .hero-scrub-canvas{
     opacity: 0;
@@ -445,42 +443,85 @@
     return 'frame_' + s + '.jpg';
   }
 
-  // Probe how many sequential frames actually exist.
-  function detectFrames(){
-    var loaded = new Array(FRAME_PROBE_CAP + 1);
-    var pending = FRAME_PROBE_CAP;
+  // Check whether a single frame exists, without polluting the console
+  // with a 404 network error for the (many) misses — we use a HEAD
+  // fetch wrapped in try/catch instead of a raw <img> probe.
+  function frameExists(idx){
+    return fetch(FRAME_DIR + padFrame(idx), { method: 'HEAD' })
+      .then(function(res){ return res.ok; })
+      .catch(function(){ return false; });
+  }
 
-    function finishDetection(){
-      var i = 1;
-      while(i <= FRAME_PROBE_CAP && loaded[i]){
-        frames.push(loaded[i]);
-        i++;
+  // Efficiently find the exact frame count via exponential search +
+  // binary search, instead of brute-force probing every index — this
+  // keeps network requests (and console noise) to a minimum.
+  function detectFrameCount(){
+    var lastGood = 0;
+    var firstBad = null;
+    var probe = 1;
+
+    function exponentialStep(){
+      if(probe > FRAME_PROBE_CAP){
+        firstBad = FRAME_PROBE_CAP + 1;
+        return binarySearch();
       }
+      return frameExists(probe).then(function(ok){
+        if(ok){
+          lastGood = probe;
+          probe *= 2;
+          return exponentialStep();
+        } else {
+          firstBad = probe;
+          return binarySearch();
+        }
+      });
+    }
+
+    function binarySearch(){
+      var lo = lastGood, hi = firstBad;
+      function step(){
+        if(hi - lo <= 1) return Promise.resolve(lo);
+        var mid = Math.floor((lo + hi) / 2);
+        return frameExists(mid).then(function(ok){
+          if(ok){ lo = mid; } else { hi = mid; }
+          return step();
+        });
+      }
+      return step();
+    }
+
+    return exponentialStep();
+  }
+
+  function loadFrameImages(count){
+    var loadPromises = [];
+    for(var i = 1; i <= count; i++){
+      (function(idx){
+        loadPromises.push(new Promise(function(resolve){
+          var img = new Image();
+          img.onload = function(){ resolve(img); };
+          img.onerror = function(){ resolve(null); };
+          img.src = FRAME_DIR + padFrame(idx);
+        }));
+      })(i);
+    }
+    return Promise.all(loadPromises);
+  }
+
+  detectFrameCount().then(function(count){
+    if(count <= 0){
+      console.warn('Anchor-drop scrub: no frames found in ' + FRAME_DIR + ' — check the folder path/naming.');
+      return;
+    }
+    return loadFrameImages(count).then(function(imgs){
+      frames = imgs.filter(function(img){ return img !== null; });
       totalFrames = frames.length;
       framesReady = totalFrames > 0;
       if(!framesReady){
-        console.warn('Anchor-drop scrub: no frames found in ' + FRAME_DIR + ' — check the folder path/naming.');
+        console.warn('Anchor-drop scrub: frame count detected as ' + count + ' but none loaded successfully.');
       }
-    }
-
-    for(var i = 1; i <= FRAME_PROBE_CAP; i++){
-      (function(idx){
-        var img = new Image();
-        img.onload = function(){
-          loaded[idx] = img;
-          pending--;
-          if(pending === 0) finishDetection();
-        };
-        img.onerror = function(){
-          loaded[idx] = null;
-          pending--;
-          if(pending === 0) finishDetection();
-        };
-        img.src = FRAME_DIR + padFrame(idx);
-      })(i);
-    }
-  }
-  detectFrames();
+    });
+  });
 
   function resizeCanvas(){
     var rect = canvas.getBoundingClientRect();
