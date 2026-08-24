@@ -26,7 +26,9 @@
     font-family: 'Inter', sans-serif;
     background: var(--navy-950);
     color: var(--cream);
-    overflow-x: hidden;
+    overflow-x: clip; /* NOTE: was overflow-x:hidden, which can silently break
+                          position:sticky in ancestors — clip avoids that bug
+                          while still preventing horizontal scroll */
   }
   .font-display{ font-family: 'Cinzel', serif; }
   .font-voice{ font-family: 'EB Garamond', serif; }
@@ -157,6 +159,7 @@
 
   .medallion-wrap{
     position: relative;
+    z-index: 3; /* always above hero-video / hero-scrub-canvas */
     height: clamp(280px, 34vw, 460px);
     display: flex; align-items: center; justify-content: center;
   }
@@ -353,6 +356,11 @@
 
   window.addEventListener('resize', resize);
   resize();
+  // Re-measure after full page load and once more shortly after —
+  // the medallion sits inside a position:sticky container, which can
+  // report a 0-size box on the very first layout pass.
+  window.addEventListener('load', resize);
+  setTimeout(resize, 250);
 
   function animate(){
     requestAnimationFrame(animate);
@@ -494,8 +502,10 @@
     drawCover(img, img.naturalWidth, img.naturalHeight);
   }
 
-  var ENTER_THRESHOLD = 0.01; // start crossfade almost immediately on scroll
-  var EXIT_THRESHOLD = 0.005; // small hysteresis so it doesn't flicker at the boundary
+  var ENTER_THRESHOLD = 0.15; // scroll buffer: video keeps playing normally
+                               // until this fraction of the scrub distance
+                               // has been scrolled, THEN the crossfade starts
+  var EXIT_THRESHOLD = 0.10;  // hysteresis so it doesn't flicker at the boundary
 
   function onScroll(){
     if(reduceMotion || !framesReady) return;
