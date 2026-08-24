@@ -408,6 +408,11 @@
     scene.add(group);
     medallion.userData.group = group;
 
+    // TEMP DEBUG — prints the model's real bounding info so we can see
+    // whether the GLB has an off-center pivot baked in from export.
+    // Remove this console.log once the wobble is fixed.
+    console.log('Medallion debug — box size:', size, 'sphere center:', sphere.center, 'sphere radius:', sphere.radius, 'medallion local position after centering:', medallion.position);
+
     resize();
     if(fallback) fallback.style.display = 'none'; // model loaded, hide the placeholder ring
   }, undefined, function(err){
