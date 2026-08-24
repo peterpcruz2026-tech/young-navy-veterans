@@ -161,9 +161,21 @@
     position: relative;
     z-index: 3; /* always above hero-video / hero-scrub-canvas */
     height: clamp(280px, 34vw, 460px);
+    min-width: 200px;
     display: flex; align-items: center; justify-content: center;
   }
-  #medallion-canvas{ width: 100%; height: 100%; display: block; }
+  /* Visible fallback so this spot is never blank while the GLB loads,
+     or if it fails to load for any reason (bad path, slow network, etc). */
+  .medallion-fallback{
+    position: absolute;
+    width: 55%; aspect-ratio: 1/1;
+    border-radius: 50%;
+    border: 2px solid rgba(212,169,73,0.55);
+    background: radial-gradient(circle at 35% 30%, rgba(236,203,122,0.25), rgba(10,18,32,0.05) 70%);
+    box-shadow: 0 0 40px rgba(212,169,73,0.15);
+    z-index: 1;
+  }
+  #medallion-canvas{ position: relative; z-index: 2; width: 100%; height: 100%; display: block; }
 
   /* ---------- FEATURES ---------- */
   .features{
@@ -260,6 +272,7 @@
         </div>
       </div>
       <div class="medallion-wrap">
+        <div class="medallion-fallback" aria-hidden="true"></div>
         <canvas id="medallion-canvas" aria-label="Rotating Young Navy Veterans emblem"></canvas>
       </div>
     </div>
@@ -301,7 +314,13 @@
 (function(){
   var canvas = document.getElementById('medallion-canvas');
   var wrap = canvas.parentElement;
+  var fallback = wrap.querySelector('.medallion-fallback');
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if(typeof THREE === 'undefined'){
+    console.error('Medallion: THREE.js failed to load from CDN — check network/ad-blocker. Fallback ring will stay visible.');
+    return; // fallback ring stays visible, nothing else to do
+  }
 
   var scene = new THREE.Scene();
   var camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
@@ -312,6 +331,7 @@
 
   function resize(){
     var w = wrap.clientWidth, h = wrap.clientHeight;
+    if(w < 2 || h < 2) return; // don't feed the renderer a bogus 0-size box
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
@@ -350,17 +370,22 @@
     medallion.userData.group = group;
 
     resize();
+    if(fallback) fallback.style.display = 'none'; // model loaded, hide the placeholder ring
   }, undefined, function(err){
-    console.error('Medallion failed to load', err);
+    console.error('Medallion: medallion.glb failed to load — check that the file exists at the repo root and the path is exactly "medallion.glb". Fallback ring stays visible.', err);
   });
 
   window.addEventListener('resize', resize);
   resize();
-  // Re-measure after full page load and once more shortly after —
-  // the medallion sits inside a position:sticky container, which can
-  // report a 0-size box on the very first layout pass.
+  // Re-measure repeatedly early on — the medallion sits inside a
+  // position:sticky container, which can report a 0-size box on the
+  // very first layout pass(es) before the browser finishes settling it.
   window.addEventListener('load', resize);
   setTimeout(resize, 250);
+  setTimeout(resize, 1000);
+  if(window.ResizeObserver){
+    new ResizeObserver(resize).observe(wrap);
+  }
 
   function animate(){
     requestAnimationFrame(animate);
@@ -502,10 +527,10 @@
     drawCover(img, img.naturalWidth, img.naturalHeight);
   }
 
-  var ENTER_THRESHOLD = 0.15; // scroll buffer: video keeps playing normally
+  var ENTER_THRESHOLD = 0.30; // scroll buffer: video keeps playing normally
                                // until this fraction of the scrub distance
                                // has been scrolled, THEN the crossfade starts
-  var EXIT_THRESHOLD = 0.10;  // hysteresis so it doesn't flicker at the boundary
+  var EXIT_THRESHOLD = 0.24;  // hysteresis so it doesn't flicker at the boundary
 
   function onScroll(){
     if(reduceMotion || !framesReady) return;
