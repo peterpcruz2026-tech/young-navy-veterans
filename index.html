@@ -95,6 +95,8 @@
   }
   .hero-video{
     transition: opacity 0.15s linear;
+    transform: scale(1.08); /* nudges out any baked-in edge padding from the source video */
+    transform-origin: center;
   }
   .hero-scrub-canvas{
     opacity: 0;
@@ -163,6 +165,7 @@
     height: clamp(280px, 34vw, 460px);
     min-width: 200px;
     display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.25s ease;
   }
   /* Visible fallback so this spot is never blank while the GLB loads,
      or if it fails to load for any reason (bad path, slow network, etc). */
@@ -271,7 +274,7 @@
           <button class="btn-secondary">Learn more</button>
         </div>
       </div>
-      <div class="medallion-wrap">
+      <div class="medallion-wrap" id="medallion-wrap">
         <div class="medallion-fallback" aria-hidden="true"></div>
         <canvas id="medallion-canvas" aria-label="Rotating Young Navy Veterans emblem"></canvas>
       </div>
@@ -428,6 +431,7 @@
   var video = document.getElementById('hero-video');
   var canvas = document.getElementById('hero-scrub-canvas');
   var ctx = canvas.getContext('2d');
+  var medallionWrap = document.getElementById('medallion-wrap');
 
   var FRAME_DIR = 'frames/anchor-drop/';
   var FRAME_PROBE_CAP = 300; // raise this if you have more than 300 frames
@@ -507,6 +511,7 @@
     canvas.style.opacity = '1';
     video.pause();
     scrubbing = true;
+    if(medallionWrap) medallionWrap.style.opacity = '0'; // hide medallion so it doesn't block the ship during the anchor drop
   }
 
   function resumeVideo(){
@@ -516,6 +521,7 @@
     if(p && p.catch) p.catch(function(){});
     scrubbing = false;
     lastDrawnFrame = -1;
+    if(medallionWrap) medallionWrap.style.opacity = '1'; // bring the medallion back once we're back on the video
   }
 
   function drawFrameForProgress(t){
