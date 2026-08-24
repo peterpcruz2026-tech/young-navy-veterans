@@ -92,6 +92,15 @@
     width: 100%; height: 100%;
     object-fit: cover;
     z-index: 0;
+    /* The source video was exported with black pillarboxing baked into
+       the pixels (confirmed by playing it outside the browser). Since
+       that's part of the actual footage, CSS can't crop it away with
+       object-fit alone — instead we scale the whole frame up so the
+       black edges get pushed outside the visible container.
+       Tune --hero-zoom if the crop needs adjusting: 1.0 = no zoom,
+       higher = more aggressive crop of the edges. */
+    transform: scale(var(--hero-zoom, 1.3));
+    transform-origin: center center;
   }
   .hero-video{
     transition: opacity 0.15s linear;
@@ -380,11 +389,18 @@
     var box = new THREE.Box3().setFromObject(medallion);
     var size = new THREE.Vector3();
     box.getSize(size);
-    var center = new THREE.Vector3();
-    box.getCenter(center);
-    medallion.position.sub(center);
+    var sphere = new THREE.Sphere();
+    box.getBoundingSphere(sphere);
+    // Center on the bounding sphere's center rather than the box center —
+    // for an irregular silhouette (laurel wreath + off-center bottom
+    // banner) this keeps rotation visually stable instead of swinging
+    // the heavier side wider through the frame.
+    medallion.position.sub(sphere.center);
     var maxDim = Math.max(size.x, size.y, size.z);
-    var scale = 2.6 / maxDim;
+    // Target a diameter noticeably smaller than the frame's visible
+    // height/width so the widest points (wreath tips, banner ends)
+    // never clip the camera edges as it rotates.
+    var scale = 2.15 / maxDim;
     medallion.scale.setScalar(scale);
 
     var group = new THREE.Group();
