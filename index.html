@@ -219,7 +219,7 @@
 
 <section class="hero">
   <video class="hero-video" autoplay muted loop playsinline poster="">
-    <source src="ship-loop-seamless.mp4" type="video/mp4">
+    <source src="ship-loop.mp4" type="video/mp4">
   </video>
   <div class="hero-scrim"></div>
   <div class="hero-inner">
@@ -268,8 +268,7 @@
 <footer>&copy; 2026 Young Navy Veterans. Not affiliated with any political party.</footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/loaders/GLTFLoader.js"></script>
 <script>
 (function(){
   var canvas = document.getElementById('medallion-canvas');
@@ -304,29 +303,21 @@
 
   var medallion = null;
   var loader = new THREE.GLTFLoader();
-  var dracoLoader = new THREE.DRACOLoader();
-  dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
-  loader.setDRACOLoader(dracoLoader);
   loader.load('medallion.glb', function(gltf){
     medallion = gltf.scene;
-    medallion.updateMatrixWorld(true);
 
     var box = new THREE.Box3().setFromObject(medallion);
     var size = new THREE.Vector3();
     box.getSize(size);
     var center = new THREE.Vector3();
     box.getCenter(center);
-
-    var inner = new THREE.Group();
-    inner.add(medallion);
     medallion.position.sub(center);
-
     var maxDim = Math.max(size.x, size.y, size.z);
-    var scale = 2.3 / maxDim;
-    inner.scale.setScalar(scale);
+    var scale = 2.6 / maxDim;
+    medallion.scale.setScalar(scale);
 
     var group = new THREE.Group();
-    group.add(inner);
+    group.add(medallion);
     scene.add(group);
     medallion.userData.group = group;
 
@@ -341,7 +332,7 @@
   function animate(){
     requestAnimationFrame(animate);
     if(medallion && !reduceMotion){
-      medallion.userData.group.rotation.y += 0.018;
+      medallion.userData.group.rotation.y += 0.006;
     }
     renderer.render(scene, camera);
   }
