@@ -78,6 +78,7 @@
   .hero-scrub-wrap{
     position: relative;
     height: 320vh; /* total scroll distance for the whole anchor-drop sequence */
+    outline: 4px solid yellow; /* TEMP DEBUG — remove once black-bar issue is found */
   }
   .hero{
     position: sticky;
@@ -95,17 +96,20 @@
   }
   .hero-video{
     transition: opacity 0.15s linear;
+    outline: 4px solid red; /* TEMP DEBUG */
   }
   .hero-scrub-canvas{
     opacity: 0;
     transition: opacity 0.15s linear;
     pointer-events: none;
+    outline: 4px solid lime; /* TEMP DEBUG */
   }
   .hero-scrim{
     position: absolute; inset: 0; z-index: 1;
     background:
       linear-gradient(90deg, rgba(6,11,20,0.80) 0%, rgba(6,11,20,0.30) 38%, rgba(6,11,20,0.02) 62%, rgba(6,11,20,0.02) 100%),
       linear-gradient(0deg, rgba(6,11,20,0.55) 0%, rgba(6,11,20,0.05) 25%, rgba(6,11,20,0.05) 72%, rgba(6,11,20,0.25) 100%);
+    outline: 4px solid cyan; /* TEMP DEBUG */
   }
   .hero-inner{
     position: relative; z-index: 2;
@@ -117,6 +121,7 @@
     padding: 48px clamp(20px, 4vw, 48px);
     max-width: 1400px;
     margin: 0 auto;
+    outline: 4px solid magenta; /* TEMP DEBUG */
   }
   .eyebrow{
     display: flex; align-items: center; gap: 12px;
