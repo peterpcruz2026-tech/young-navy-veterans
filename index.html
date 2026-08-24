@@ -66,19 +66,38 @@
   .btn-join:hover{ filter: brightness(1.12); }
   .nav-toggle{ display: none; }
 
-  /* ---------- HERO ---------- */
-  .hero{
+  /* ---------- HERO SCRUB WRAP ----------
+     This tall wrapper is what creates scroll distance for the
+     video -> frame-sequence "anchor drop" animation. The hero
+     itself is pinned (position: sticky) inside it while the
+     user scrolls through this wrapper's extra height.
+     Raise/lower --scrub-vh to make the scrub take more or less
+     scrolling to complete. */
+  .hero-scrub-wrap{
     position: relative;
-    min-height: 88vh;
+    height: 320vh; /* total scroll distance for the whole anchor-drop sequence */
+  }
+  .hero{
+    position: sticky;
+    top: 0;
+    min-height: 100vh;
     display: flex;
     align-items: center;
     overflow: hidden;
   }
-  .hero-video{
+  .hero-video, .hero-scrub-canvas{
     position: absolute; inset: 0;
     width: 100%; height: 100%;
     object-fit: cover;
     z-index: 0;
+  }
+  .hero-video{
+    transition: opacity 0.15s linear;
+  }
+  .hero-scrub-canvas{
+    opacity: 0;
+    transition: opacity 0.15s linear;
+    pointer-events: none;
   }
   .hero-scrim{
     position: absolute; inset: 0; z-index: 1;
@@ -149,9 +168,10 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0,1fr));
     gap: 20px;
-    padding: 0 clamp(20px, 4vw, 48px) 64px;
+    padding: 64px clamp(20px, 4vw, 48px) 64px;
     max-width: 1400px;
-    margin: -70px auto 0;
+    margin: 0 auto;
+    background: var(--navy-950);
   }
   .feature-card{
     background: rgba(10,18,32,0.82);
@@ -189,11 +209,13 @@
     .eyebrow{ justify-content: center; }
     .hero-cta{ justify-content: center; }
     .medallion-wrap{ order: -1; height: 240px; }
-    .features{ grid-template-columns: 1fr; margin-top: 24px; }
+    .features{ grid-template-columns: 1fr; }
+    .hero-scrub-wrap{ height: 260vh; }
   }
 
   @media (prefers-reduced-motion: reduce){
     .hero-video{ display: none; }
+    .hero-scrub-canvas{ opacity: 1 !important; }
   }
 </style>
 </head>
@@ -217,26 +239,29 @@
   <button class="btn-join">Join us</button>
 </nav>
 
-<section class="hero">
-  <video class="hero-video" autoplay muted loop playsinline poster="">
-    <source src="ship-loop.mp4" type="video/mp4">
-  </video>
-  <div class="hero-scrim"></div>
-  <div class="hero-inner">
-    <div>
-      <p class="eyebrow"><span class="rule"></span>Honor &bull; Service &bull; Country<span class="rule"></span></p>
-      <h1 class="headline font-display">Young Navy<br>Veterans</h1>
-      <p class="tagline">&ldquo;Courage to serve&rdquo;</p>
-      <div class="hero-cta">
-        <button class="btn-primary">Join us today</button>
-        <button class="btn-secondary">Learn more</button>
+<div class="hero-scrub-wrap" id="hero-scrub-wrap">
+  <section class="hero">
+    <video class="hero-video" id="hero-video" autoplay muted loop playsinline poster="">
+      <source src="ship-loop-seamless.mp4" type="video/mp4">
+    </video>
+    <canvas class="hero-scrub-canvas" id="hero-scrub-canvas"></canvas>
+    <div class="hero-scrim"></div>
+    <div class="hero-inner">
+      <div>
+        <p class="eyebrow"><span class="rule"></span>Honor &bull; Service &bull; Country<span class="rule"></span></p>
+        <h1 class="headline font-display">Young Navy<br>Veterans</h1>
+        <p class="tagline">&ldquo;Courage to serve&rdquo;</p>
+        <div class="hero-cta">
+          <button class="btn-primary">Join us today</button>
+          <button class="btn-secondary">Learn more</button>
+        </div>
+      </div>
+      <div class="medallion-wrap">
+        <canvas id="medallion-canvas" aria-label="Rotating Young Navy Veterans emblem"></canvas>
       </div>
     </div>
-    <div class="medallion-wrap">
-      <canvas id="medallion-canvas" aria-label="Rotating Young Navy Veterans emblem"></canvas>
-    </div>
-  </div>
-</section>
+  </section>
+</div>
 
 <div class="features">
   <div class="feature-card">
@@ -346,6 +371,161 @@
     }, { threshold: 0.05 });
     obs.observe(wrap);
   }
+})();
+</script>
+
+<script>
+/* ============================================================
+   ANCHOR-DROP SCROLL SCRUB
+   Video plays normally at rest. The instant the user starts
+   scrolling, we freeze the video's *current* frame onto a canvas
+   sitting exactly on top of it, then crossfade video -> canvas
+   over ~150ms. Because the canvas is showing the exact pixels
+   the video was already showing, the swap is invisible. From
+   there, scroll position drives which frame from
+   frames/anchor-drop/ is drawn, playing out the anchor drop.
+
+   Frame count is auto-detected — no need to hard-code it.
+   Raise FRAME_PROBE_CAP if you ever have more than 300 frames.
+   ============================================================ */
+(function(){
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var wrap = document.getElementById('hero-scrub-wrap');
+  var video = document.getElementById('hero-video');
+  var canvas = document.getElementById('hero-scrub-canvas');
+  var ctx = canvas.getContext('2d');
+
+  var FRAME_DIR = 'frames/anchor-drop/';
+  var FRAME_PROBE_CAP = 300; // raise this if you have more than 300 frames
+  var frames = [];       // loaded Image objects, index 0 = frame_0001.jpg
+  var totalFrames = 0;
+  var framesReady = false;
+
+  function padFrame(n){
+    var s = String(n);
+    while(s.length < 4) s = '0' + s;
+    return 'frame_' + s + '.jpg';
+  }
+
+  // Probe how many sequential frames actually exist.
+  function detectFrames(){
+    var loaded = new Array(FRAME_PROBE_CAP + 1);
+    var pending = FRAME_PROBE_CAP;
+
+    function finishDetection(){
+      var i = 1;
+      while(i <= FRAME_PROBE_CAP && loaded[i]){
+        frames.push(loaded[i]);
+        i++;
+      }
+      totalFrames = frames.length;
+      framesReady = totalFrames > 0;
+      if(!framesReady){
+        console.warn('Anchor-drop scrub: no frames found in ' + FRAME_DIR + ' — check the folder path/naming.');
+      }
+    }
+
+    for(var i = 1; i <= FRAME_PROBE_CAP; i++){
+      (function(idx){
+        var img = new Image();
+        img.onload = function(){
+          loaded[idx] = img;
+          pending--;
+          if(pending === 0) finishDetection();
+        };
+        img.onerror = function(){
+          loaded[idx] = null;
+          pending--;
+          if(pending === 0) finishDetection();
+        };
+        img.src = FRAME_DIR + padFrame(idx);
+      })(i);
+    }
+  }
+  detectFrames();
+
+  function resizeCanvas(){
+    var rect = canvas.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  // Draw an image/video frame into the canvas using object-fit: cover math.
+  function drawCover(source, sw, sh){
+    var cw = canvas.width, ch = canvas.height;
+    if(!sw || !sh || !cw || !ch) return;
+    var scale = Math.max(cw / sw, ch / sh);
+    var dw = sw * scale, dh = sh * scale;
+    var dx = (cw - dw) / 2, dy = (ch - dh) / 2;
+    ctx.drawImage(source, dx, dy, dw, dh);
+  }
+
+  var scrubbing = false;      // true once we've crossfaded from video to canvas
+  var lastDrawnFrame = -1;
+
+  function freezeVideoIntoCanvas(){
+    resizeCanvas();
+    drawCover(video, video.videoWidth, video.videoHeight);
+    video.style.opacity = '0';
+    canvas.style.opacity = '1';
+    video.pause();
+    scrubbing = true;
+  }
+
+  function resumeVideo(){
+    video.style.opacity = '1';
+    canvas.style.opacity = '0';
+    var p = video.play();
+    if(p && p.catch) p.catch(function(){});
+    scrubbing = false;
+    lastDrawnFrame = -1;
+  }
+
+  function drawFrameForProgress(t){
+    if(!framesReady) return;
+    var idx = Math.round(t * (totalFrames - 1));
+    if(idx === lastDrawnFrame) return;
+    lastDrawnFrame = idx;
+    var img = frames[idx];
+    drawCover(img, img.naturalWidth, img.naturalHeight);
+  }
+
+  var ENTER_THRESHOLD = 0.01; // start crossfade almost immediately on scroll
+  var EXIT_THRESHOLD = 0.005; // small hysteresis so it doesn't flicker at the boundary
+
+  function onScroll(){
+    if(reduceMotion || !framesReady) return;
+
+    var rect = wrap.getBoundingClientRect();
+    var scrollable = wrap.offsetHeight - window.innerHeight;
+    if(scrollable <= 0) return;
+
+    var scrolled = -rect.top;
+    var progress = scrolled / scrollable;
+    if(progress < 0) progress = 0;
+    if(progress > 1) progress = 1;
+
+    if(!scrubbing && progress > ENTER_THRESHOLD){
+      freezeVideoIntoCanvas();
+    } else if(scrubbing && progress <= EXIT_THRESHOLD){
+      resumeVideo();
+    }
+
+    if(scrubbing){
+      // Remap so the frame sequence spans ENTER_THRESHOLD -> 1.0
+      var t = (progress - ENTER_THRESHOLD) / (1 - ENTER_THRESHOLD);
+      if(t < 0) t = 0;
+      if(t > 1) t = 1;
+      drawFrameForProgress(t);
+    }
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
 })();
 </script>
 
