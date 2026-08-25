@@ -230,7 +230,7 @@
   }
   .diver-scrub-wrap{
     position: relative;
-    height: 220vh; /* extra scroll room = time for the video to be seen before the frames trigger */
+    height: 340vh; /* extra scroll room: boat loop -> diver.mp4 scrub -> diver-mission.mp4 scrub, chained */
   }
   .diver-section{
     position: sticky;
@@ -307,60 +307,6 @@
     opacity: 1;
     pointer-events: auto;
   }
-  .mission-video-wrap{
-    position: relative;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    overflow: hidden;
-    background: var(--navy-950);
-  }
-  .mission-video-wrap video{
-    position: absolute; inset: 0;
-    width: 100%; height: 100%;
-    object-fit: cover;
-    z-index: 0;
-  }
-  .mission-video-scrim{
-    position: absolute; inset: 0; z-index: 1;
-    background:
-      linear-gradient(180deg, rgba(6,11,20,0.65) 0%, rgba(6,11,20,0.10) 28%, rgba(6,11,20,0.10) 68%, rgba(6,11,20,0.88) 100%);
-  }
-  .mission-video-inner{
-    position: relative; z-index: 2;
-    width: 100%;
-    max-width: 780px;
-    margin: 0 auto;
-    padding: 64px clamp(20px, 4vw, 48px);
-    text-align: center;
-    opacity: 0;
-    transform: translateY(26px);
-    transition: opacity 0.9s ease, transform 0.9s ease;
-  }
-  .mission-video-inner.is-visible{
-    opacity: 1;
-    transform: translateY(0);
-  }
-  .mission-video-headline{
-    font-size: clamp(28px, 4.2vw, 48px);
-    line-height: 1.15;
-    color: var(--gold-100);
-    text-shadow: 0 2px 18px rgba(0,0,0,0.6);
-    margin-top: 18px;
-  }
-  .mission-video-tagline{
-    font-family: 'EB Garamond', serif;
-    font-style: italic;
-    font-size: clamp(17px, 2vw, 22px);
-    color: var(--cream);
-    margin-top: 16px;
-  }
-  @media (max-width: 860px){
-    .mission-video-wrap{ min-height: 80vh; }
-  }
-  @media (prefers-reduced-motion: reduce){
-    .mission-video-inner{ opacity: 1; transform: none; transition: none; }
-  }
   .features{
     position: relative; z-index: 2;
     display: grid;
@@ -407,7 +353,7 @@
     .medallion-wrap{ order: -1; height: 240px; transform: none; }
     .features{ grid-template-columns: 1fr; }
     .hero-scrub-wrap{ height: 260vh; }
-    .diver-scrub-wrap{ height: 180vh; }
+    .diver-scrub-wrap{ height: 300vh; }
     .diver-after-text{ top: 6%; left: 50%; max-width: 86%; }
   }
   @media (max-width: 640px){
@@ -497,6 +443,9 @@
          It is never .play()'d — we scrub it by setting currentTime and drawing each
          resulting frame onto the canvas above, both forward and in reverse. -->
     <video class="diver-scrub-source" id="diver-scrub-source" src="diver.mp4" muted playsinline preload="auto"></video>
+    <!-- Second scrub source, chained after diver.mp4 finishes: continues the same
+         scroll sequence into diver-mission.mp4 rather than starting a new section. -->
+    <video class="diver-scrub-source" id="mission-scrub-source" src="diver-mission.mp4" muted playsinline preload="auto"></video>
     <div class="diver-scrim"></div>
     <div class="diver-inner" id="diver-inner">
       <p class="eyebrow"><span class="rule"></span>Beneath The Surface<span class="rule"></span></p>
@@ -504,24 +453,17 @@
       <p class="diver-tagline">Every mission begins the moment we step off the boat.</p>
     </div>
     <div class="diver-after-text" id="diver-after-text">
+      <p class="eyebrow"><span class="rule"></span>Descent Underway<span class="rule"></span></p>
+      <h2 class="diver-headline font-display">Into the deep.</h2>
+      <p class="diver-tagline">Every dive begins with a single breath.</p>
+    </div>
+    <div class="diver-after-text" id="mission-after-text">
       <p class="eyebrow"><span class="rule"></span>Position Confirmed<span class="rule"></span></p>
       <h2 class="diver-headline font-display">Wherever the mission takes us.</h2>
       <p class="diver-tagline">Ready in the water, ready on land.</p>
     </div>
   </section>
 </div>
-
-<section class="mission-video-wrap" id="mission-video-wrap">
-  <video autoplay muted loop playsinline preload="auto">
-    <source src="diver-mission.mp4" type="video/mp4">
-  </video>
-  <div class="mission-video-scrim"></div>
-  <div class="mission-video-inner" id="mission-video-inner">
-    <p class="eyebrow"><span class="rule"></span>Full Deployment<span class="rule"></span></p>
-    <h2 class="mission-video-headline font-display">Wherever the mission takes us.</h2>
-    <p class="mission-video-tagline">Ready in the water, ready on land.</p>
-  </div>
-</section>
 
 <div class="features">
   <div class="feature-card">
@@ -846,67 +788,59 @@
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   var wrap = document.getElementById('diver-scrub-wrap');
-  var video = document.getElementById('diver-video');
+  var video = document.getElementById('diver-video');           // diver-boat-loop-seamless.mp4, plays live at rest
   var canvas = document.getElementById('diver-scrub-canvas');
   var ctx = canvas.getContext('2d');
-  var beforeText = document.getElementById('diver-inner');       // existing intro text block
-  var afterText = document.getElementById('diver-after-text');   // new text block, shown after playback completes
+  var beforeText = document.getElementById('diver-inner');        // intro text, shown at rest (boat loop)
+  var diveAfterText = document.getElementById('diver-after-text');    // shown once diver.mp4 finishes
+  var missionAfterText = document.getElementById('mission-after-text'); // shown once diver-mission.mp4 finishes
 
-  // Scrub source: instead of a 1..59 image sequence, we scrub diver.mp4 itself by
-  // setting its currentTime and drawing each resulting frame onto the canvas —
-  // forward on scroll down, backward (reverse) on scroll back up.
-  var scrubVideo = document.getElementById('diver-scrub-source');
-  var PLAY_DURATION_MS = 1800;    // how long the forward/reverse scrub takes once triggered
-  var TRIGGER_PROGRESS = 0.55;    // how far scrolled into the wrap before it fires — gives the boat loop real screen time first
-  var RESET_PROGRESS = 0.10;      // scrolling back above this resets to live boat-loop video
+  // Two chained scrub sources. Each is scrubbed by setting currentTime and drawing
+  // the resulting frame onto the shared canvas — this is what makes diver-mission.mp4
+  // feel like a continuation of diver.mp4 instead of a new section starting over.
+  var PLAY_DURATION_MS = 1800;     // duration of each forward/reverse scrub animation
+  var TRIGGER_DIVE = 0.18;         // scroll progress (within the whole wrap) that starts diver.mp4
+  var RESET_DIVE = 0.05;           // scrolling back above this (while held on diver.mp4) resumes the boat loop
+  var TRIGGER_MISSION = 0.58;      // scroll progress that continues on into diver-mission.mp4
+  var RESET_MISSION = 0.44;        // scrolling back above this (while held on diver-mission.mp4) reverses back to diver.mp4's held frame
 
-  var videoReady = false;
-  var duration = 0;
-  var SEEK_EPSILON = 0.03;
-
-  scrubVideo.addEventListener('loadedmetadata', function(){
-    duration = scrubVideo.duration;
-    videoReady = isFinite(duration) && duration > 0;
-    if(!videoReady){
-      console.warn('Diver scrub: diver.mp4 metadata loaded but duration is invalid.');
+  function makeScrubber(el, label){
+    var ready = false, duration = 0, seekPending = false, pendingTime = null;
+    el.addEventListener('loadedmetadata', function(){
+      duration = el.duration;
+      ready = isFinite(duration) && duration > 0;
+      if(!ready) console.warn(label + ': metadata loaded but duration is invalid.');
+    });
+    el.addEventListener('error', function(){
+      console.warn(label + ': failed to load — check the path/filename.');
+    });
+    function clampTime(t){
+      if(t < 0) t = 0;
+      if(t > duration - 0.05) t = Math.max(0, duration - 0.05);
+      return t;
     }
-  });
-  scrubVideo.addEventListener('error', function(){
-    console.warn('Diver scrub: diver.mp4 failed to load — check the path/filename.');
-  });
-
-  // Seeking on a <video> is asynchronous, so we queue the latest requested time and
-  // only issue a new seek once the previous one has resolved via the 'seeked' event.
-  var seekPending = false;
-  var pendingTime = null;
-
-  function clampTime(t){
-    if(t < 0) t = 0;
-    if(t > duration - 0.05) t = Math.max(0, duration - 0.05);
-    return t;
+    el.addEventListener('seeked', function(){
+      if(scrubber.isActive()) drawCover(el, el.videoWidth, el.videoHeight);
+      seekPending = false;
+      if(pendingTime !== null && Math.abs(pendingTime - el.currentTime) > 0.03){
+        var t = pendingTime; pendingTime = null; seekPending = true; el.currentTime = t;
+      } else {
+        pendingTime = null;
+      }
+    });
+    var scrubber = {
+      el: el,
+      isReady: function(){ return ready; },
+      getDuration: function(){ return duration; },
+      requestSeek: function(time){
+        if(!ready) return;
+        pendingTime = clampTime(time);
+        if(!seekPending){ seekPending = true; el.currentTime = pendingTime; }
+      },
+      isActive: function(){ return activeScrubber === scrubber; }
+    };
+    return scrubber;
   }
-
-  function requestSeek(time){
-    if(!videoReady) return;
-    pendingTime = clampTime(time);
-    if(!seekPending){
-      seekPending = true;
-      scrubVideo.currentTime = pendingTime;
-    }
-  }
-
-  scrubVideo.addEventListener('seeked', function(){
-    drawCover(scrubVideo, scrubVideo.videoWidth, scrubVideo.videoHeight);
-    seekPending = false;
-    if(pendingTime !== null && Math.abs(pendingTime - scrubVideo.currentTime) > SEEK_EPSILON){
-      var t = pendingTime;
-      pendingTime = null;
-      seekPending = true;
-      scrubVideo.currentTime = t;
-    } else {
-      pendingTime = null;
-    }
-  });
 
   function resizeCanvas(){
     var rect = canvas.getBoundingClientRect();
@@ -926,16 +860,19 @@
     ctx.drawImage(source, dx, dy, dw, dh);
   }
 
-  // 'video'     -> diver-boat-loop-seamless.mp4 playing normally, nothing triggered
-  // 'playing'   -> forward scrub actively running 0 -> duration on diver.mp4, cannot be interrupted
-  // 'held'      -> finished, holding on the last frame of diver.mp4
-  // 'reversing' -> scrolled back up from 'held', running duration -> 0, cannot be interrupted
-  var state = 'video';
-  var playStartTime = 0;
+  var diveScrub = makeScrubber(document.getElementById('diver-scrub-source'), 'diver.mp4 scrub');
+  var missionScrub = makeScrubber(document.getElementById('mission-scrub-source'), 'diver-mission.mp4 scrub');
+  var activeScrubber = null;
 
   function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
 
-  function freezeVideoIntoCanvas(){
+  // States, in order: boat -> dive-play -> dive-held -> mission-play -> mission-held
+  // and reversible step-by-step back the same path. Each "-play"/"reverse" state runs
+  // on its own fixed-duration timer once triggered and ignores further scroll until done.
+  var state = 'boat';
+  var playStartTime = 0;
+
+  function freezeBoatIntoCanvas(){
     resizeCanvas();
     drawCover(video, video.videoWidth, video.videoHeight);
     video.style.opacity = '0';
@@ -943,61 +880,101 @@
     video.pause();
   }
 
-  function resumeVideo(){
+  function resumeBoat(){
     video.style.opacity = '1';
     canvas.style.opacity = '0';
     var p = video.play();
     if(p && p.catch) p.catch(function(){});
+    activeScrubber = null;
     if(beforeText) beforeText.classList.remove('is-hidden');
-    if(afterText) afterText.classList.remove('is-visible');
+    if(diveAfterText) diveAfterText.classList.remove('is-visible');
   }
 
-  function startPlayback(){
-    if(!videoReady || state !== 'video') return;
-    state = 'playing';
+  function startDivePlay(){
+    if(!diveScrub.isReady() || state !== 'boat') return;
+    state = 'dive-play';
+    activeScrubber = diveScrub;
     playStartTime = performance.now();
-    freezeVideoIntoCanvas();
-    requestSeek(0);
-    if(beforeText) beforeText.classList.add('is-hidden'); // fade out intro text the moment playback starts
-    requestAnimationFrame(stepPlayback);
+    freezeBoatIntoCanvas();
+    diveScrub.requestSeek(0);
+    if(beforeText) beforeText.classList.add('is-hidden');
+    requestAnimationFrame(stepDivePlay);
   }
 
-  function stepPlayback(now){
-    if(state !== 'playing') return;
-    var elapsed = now - playStartTime;
-    var t = Math.min(elapsed / PLAY_DURATION_MS, 1);
-    var eased = easeOutCubic(t);
-    requestSeek(eased * duration);
-
+  function stepDivePlay(now){
+    if(state !== 'dive-play') return;
+    var t = Math.min((now - playStartTime) / PLAY_DURATION_MS, 1);
+    diveScrub.requestSeek(easeOutCubic(t) * diveScrub.getDuration());
     if(t >= 1){
-      state = 'held'; // stays on the last frame — does not auto-reverse, only reverses on scroll-up
-      if(afterText) afterText.classList.add('is-visible'); // reveal the "diver located" text
+      state = 'dive-held';
+      if(diveAfterText) diveAfterText.classList.add('is-visible');
       return;
     }
-    requestAnimationFrame(stepPlayback);
+    requestAnimationFrame(stepDivePlay);
   }
 
-  function startReverse(){
-    if(!videoReady || state !== 'held') return;
-    state = 'reversing';
+  function startDiveReverse(){
+    if(state !== 'dive-held') return;
+    state = 'dive-reverse';
     playStartTime = performance.now();
-    if(afterText) afterText.classList.remove('is-visible'); // fade out the reveal text as we scroll back
-    requestAnimationFrame(stepReverse);
+    if(diveAfterText) diveAfterText.classList.remove('is-visible');
+    requestAnimationFrame(stepDiveReverse);
   }
 
-  function stepReverse(now){
-    if(state !== 'reversing') return;
-    var elapsed = now - playStartTime;
-    var t = Math.min(elapsed / PLAY_DURATION_MS, 1);
-    var eased = easeOutCubic(t);
-    requestSeek((1 - eased) * duration); // runs duration -> 0
-
+  function stepDiveReverse(now){
+    if(state !== 'dive-reverse') return;
+    var t = Math.min((now - playStartTime) / PLAY_DURATION_MS, 1);
+    diveScrub.requestSeek((1 - easeOutCubic(t)) * diveScrub.getDuration());
     if(t >= 1){
-      state = 'video';
-      resumeVideo(); // switches back to the live looping boat video, brings intro text back
+      state = 'boat';
+      resumeBoat();
       return;
     }
-    requestAnimationFrame(stepReverse);
+    requestAnimationFrame(stepDiveReverse);
+  }
+
+  function startMissionPlay(){
+    if(!missionScrub.isReady() || state !== 'dive-held') return;
+    state = 'mission-play';
+    activeScrubber = missionScrub;
+    playStartTime = performance.now();
+    missionScrub.requestSeek(0);
+    if(diveAfterText) diveAfterText.classList.remove('is-visible'); // continuation, not a fresh reveal
+    requestAnimationFrame(stepMissionPlay);
+  }
+
+  function stepMissionPlay(now){
+    if(state !== 'mission-play') return;
+    var t = Math.min((now - playStartTime) / PLAY_DURATION_MS, 1);
+    missionScrub.requestSeek(easeOutCubic(t) * missionScrub.getDuration());
+    if(t >= 1){
+      state = 'mission-held';
+      if(missionAfterText) missionAfterText.classList.add('is-visible');
+      return;
+    }
+    requestAnimationFrame(stepMissionPlay);
+  }
+
+  function startMissionReverse(){
+    if(state !== 'mission-held') return;
+    state = 'mission-reverse';
+    playStartTime = performance.now();
+    if(missionAfterText) missionAfterText.classList.remove('is-visible');
+    requestAnimationFrame(stepMissionReverse);
+  }
+
+  function stepMissionReverse(now){
+    if(state !== 'mission-reverse') return;
+    var t = Math.min((now - playStartTime) / PLAY_DURATION_MS, 1);
+    missionScrub.requestSeek((1 - easeOutCubic(t)) * missionScrub.getDuration());
+    if(t >= 1){
+      state = 'dive-held';
+      activeScrubber = diveScrub;
+      diveScrub.requestSeek(diveScrub.getDuration()); // redraw diver.mp4's last frame on the canvas
+      if(diveAfterText) diveAfterText.classList.add('is-visible');
+      return;
+    }
+    requestAnimationFrame(stepMissionReverse);
   }
 
   function onScroll(){
@@ -1008,40 +985,25 @@
     if(scrollable <= 0) return;
 
     var scrolled = -rect.top;
-    var progress = scrolled / scrollable;
-    if(progress < 0) progress = 0;
-    if(progress > 1) progress = 1;
+    var progress = Math.min(Math.max(scrolled / scrollable, 0), 1);
 
-    // Video plays/loops freely from 0 up to TRIGGER_PROGRESS — that gap is deliberate
-    // screen time so the person actually sees the boat before anything triggers.
-    if(state === 'video' && progress >= TRIGGER_PROGRESS){
-      startPlayback(); // fires once, scrubs diver.mp4 forward to completion on its own timer, ignores further scroll
-    } else if(state === 'held' && progress <= RESET_PROGRESS){
-      startReverse(); // scrolled back up — scrubs diver.mp4 in reverse to completion, then resumes live video
+    if(state === 'boat' && progress >= TRIGGER_DIVE){
+      startDivePlay();
+    } else if(state === 'dive-held'){
+      if(progress >= TRIGGER_MISSION){
+        startMissionPlay(); // continue straight into diver-mission.mp4, same canvas, same sequence
+      } else if(progress <= RESET_DIVE){
+        startDiveReverse();
+      }
+    } else if(state === 'mission-held' && progress <= RESET_MISSION){
+      startMissionReverse();
     }
-    // 'playing' and 'reversing' states intentionally ignore scroll input entirely
-    // until their sequence finishes — that's what stops it from ever freezing mid-frame.
+    // '-play' and '-reverse' states ignore scroll input entirely until their
+    // animation finishes, so the sequence never freezes mid-frame.
   }
 
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
-})();
-</script>
-
-<script>
-(function(){
-  var inner = document.getElementById('mission-video-inner');
-  if(!inner) return;
-  if(!('IntersectionObserver' in window)){
-    inner.classList.add('is-visible');
-    return;
-  }
-  var obs = new IntersectionObserver(function(entries){
-    entries.forEach(function(e){
-      if(e.isIntersecting) inner.classList.add('is-visible');
-    });
-  }, { threshold: 0.35 });
-  obs.observe(inner);
 })();
 </script>
 
