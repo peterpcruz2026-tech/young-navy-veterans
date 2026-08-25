@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Young Navy Veterans — Courage to Serve</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preload" as="video" href="ship-loop-seamless.mp4" type="video/mp4">
+<link rel="preload" as="video" href="diver-boat-loop-seamless.mp4" type="video/mp4">
+<link rel="preload" as="video" href="diver.mp4" type="video/mp4">
+<link rel="preload" as="video" href="diver-mission.mp4" type="video/mp4">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -695,6 +699,9 @@
       framesReady = totalFrames > 0;
       if(!framesReady){
         console.warn('Anchor-drop scrub: frame count detected as ' + count + ' but none loaded successfully.');
+      } else {
+        onScroll(); // catch up immediately if the person already scrolled past the trigger
+                     // point while these frames were still loading in the background
       }
     });
   });
@@ -809,7 +816,12 @@
     el.addEventListener('loadedmetadata', function(){
       duration = el.duration;
       ready = isFinite(duration) && duration > 0;
-      if(!ready) console.warn(label + ': metadata loaded but duration is invalid.');
+      if(!ready){
+        console.warn(label + ': metadata loaded but duration is invalid.');
+      } else {
+        onScroll(); // catch up immediately if the person already scrolled past the trigger
+                     // point while this video was still loading its metadata
+      }
     });
     el.addEventListener('error', function(){
       console.warn(label + ': failed to load — check the path/filename.');
