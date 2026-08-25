@@ -935,12 +935,37 @@
 
   function startMissionPlay(){
     if(!missionScrub.isReady() || state !== 'dive-held') return;
-    state = 'mission-play';
-    activeScrubber = missionScrub;
+    state = 'mission-crossfade';
     playStartTime = performance.now();
-    missionScrub.requestSeek(0);
     if(diveAfterText) diveAfterText.classList.remove('is-visible'); // continuation, not a fresh reveal
-    requestAnimationFrame(stepMissionPlay);
+    // Draw diver.mp4's held frame as the crossfade base, then seek diver-mission.mp4
+    // to its first frame in the background so it's ready the instant the fade starts.
+    drawCover(diveScrub.el, diveScrub.el.videoWidth, diveScrub.el.videoHeight);
+    missionScrub.el.currentTime = 0;
+    requestAnimationFrame(stepMissionCrossfade);
+  }
+
+  var CROSSFADE_MS = 420;
+
+  function stepMissionCrossfade(now){
+    if(state !== 'mission-crossfade') return;
+    var t = Math.min((now - playStartTime) / CROSSFADE_MS, 1);
+    // Blend: draw the outgoing frame, then the incoming frame on top at rising opacity.
+    resizeCanvas();
+    ctx.globalAlpha = 1;
+    drawCover(diveScrub.el, diveScrub.el.videoWidth, diveScrub.el.videoHeight);
+    ctx.save();
+    ctx.globalAlpha = t;
+    drawCover(missionScrub.el, missionScrub.el.videoWidth, missionScrub.el.videoHeight);
+    ctx.restore();
+    if(t >= 1){
+      state = 'mission-play';
+      activeScrubber = missionScrub;
+      playStartTime = performance.now();
+      requestAnimationFrame(stepMissionPlay);
+      return;
+    }
+    requestAnimationFrame(stepMissionCrossfade);
   }
 
   function stepMissionPlay(now){
