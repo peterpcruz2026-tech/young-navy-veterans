@@ -19,14 +19,8 @@
     --red-800: #5c161a;
     --cream: #f3ead0;
     --text-dim: #b9c2cf;
-    /* Crest divider tuning — adjust these two if the frame doesn't line
-       up right on your actual screen: raise --crest-max-width to make
-       the frame reach closer to full screen edges; make --crest-shift-y
-       more negative (e.g. -62%) to pull the frame further up and clear
-       more of the diver's head, or less negative (e.g. -52%) if it's
-       now sitting too high and cutting off too much of the crest. */
     --crest-max-width: 1600px;
-    --crest-shift-y: -58%;
+    --crest-shift-y: -64%;
   }
   *{ box-sizing: border-box; margin: 0; padding: 0; }
   html{ scroll-behavior: smooth; }
@@ -34,21 +28,13 @@
     font-family: 'Inter', sans-serif;
     background: var(--navy-950);
     color: var(--cream);
-    overflow-x: clip; /* NOTE: was overflow-x:hidden, which can silently break
-                          position:sticky in ancestors — clip avoids that bug
-                          while still preventing horizontal scroll */
+    overflow-x: clip;
   }
   .font-display{ font-family: 'Cinzel', serif; }
   .font-voice{ font-family: 'EB Garamond', serif; }
-
-  /* ---------- NAV ---------- */
   nav{
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
     padding: 14px clamp(20px, 4vw, 48px);
     background: rgba(6,11,20,0.92);
     backdrop-filter: blur(8px);
@@ -75,44 +61,23 @@
   }
   .btn-join:hover{ filter: brightness(1.12); }
   .nav-toggle{ display: none; }
-
-  /* ---------- HERO SCRUB WRAP ----------
-     This tall wrapper is what creates scroll distance for the
-     video -> frame-sequence "anchor drop" animation. The hero
-     itself is pinned (position: sticky) inside it while the
-     user scrolls through this wrapper's extra height.
-     Raise/lower --scrub-vh to make the scrub take more or less
-     scrolling to complete. */
   .hero-scrub-wrap{
     position: relative;
-    height: 320vh; /* total scroll distance for the whole anchor-drop sequence */
+    height: 320vh;
   }
   .hero{
-    position: sticky;
-    top: 0;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    overflow: hidden;
+    position: sticky; top: 0; min-height: 100vh;
+    display: flex; align-items: center; overflow: hidden;
   }
   .hero-video, .hero-scrub-canvas{
     position: absolute; inset: 0;
     width: 100%; height: 100%;
     object-fit: cover;
     z-index: 0;
-    /* The source video was exported with black pillarboxing baked into
-       the pixels (confirmed by playing it outside the browser). Since
-       that's part of the actual footage, CSS can't crop it away with
-       object-fit alone — instead we scale the whole frame up so the
-       black edges get pushed outside the visible container.
-       Tune --hero-zoom if the crop needs adjusting: 1.0 = no zoom,
-       higher = more aggressive crop of the edges. */
     transform: scale(var(--hero-zoom, 1.3));
     transform-origin: center center;
   }
-  .hero-video{
-    transition: opacity 0.15s linear;
-  }
+  .hero-video{ transition: opacity 0.15s linear; }
   .hero-scrub-canvas{
     opacity: 0;
     transition: opacity 0.15s linear;
@@ -173,21 +138,15 @@
   }
   .btn-primary:hover{ filter: brightness(1.12); }
   .btn-secondary:hover{ background: rgba(212,169,73,0.12); }
-
   .medallion-wrap{
     position: relative;
-    z-index: 3; /* always above hero-video / hero-scrub-canvas */
+    z-index: 3;
     height: clamp(280px, 34vw, 460px);
     min-width: 200px;
     display: flex; align-items: center; justify-content: center;
     transition: opacity 0.25s ease;
-    /* Nudges the medallion right to close the empty margin outside the
-       centered hero-inner container. Tune --medallion-shift-x: raise it
-       for more rightward shift, lower/negative to bring it back left. */
     transform: translateX(var(--medallion-shift-x, 60px));
   }
-  /* Visible fallback so this spot is never blank while the GLB loads,
-     or if it fails to load for any reason (bad path, slow network, etc). */
   .medallion-fallback{
     position: absolute;
     width: 55%; aspect-ratio: 1/1;
@@ -198,43 +157,16 @@
     z-index: 1;
   }
   #medallion-canvas{ position: relative; z-index: 2; width: 100%; height: 100%; display: block; }
-
-  /* ---------- CREST DIVIDER ----------
-     Sits exactly ON the seam between the hero and diver sections.
-     ynv_divider_frame.png is transparent outside its own gold border,
-     so the hero video shows through above it and the diver video
-     shows through below it — no page background should ever be
-     visible behind it.
-
-     How the centering works: .crest-divider takes ZERO height in the
-     page flow (height: 0), so it doesn't push the diver section down —
-     it sits exactly at the boundary point where the hero ends and the
-     diver section begins. The inner frame is then absolutely positioned
-     and shifted up by exactly half its OWN rendered height via
-     translate(-50%, -50%). Percentage values in `transform` are always
-     relative to the element's own box, not a hardcoded pixel guess —
-     so this stays correctly centered on the seam at any screen width,
-     unlike a fixed negative-margin value which only worked for one
-     specific rendered size. */
   .crest-divider{
     position: relative;
-    z-index: 5; /* above both the hero and diver sections' own content (z-index: 2) */
+    z-index: 5;
     height: 0;
-    pointer-events: none; /* clicks pass through to whatever's behind, since
-                              the frame itself has no interactive elements */
+    pointer-events: none;
   }
   .crest-divider-inner{
     position: absolute;
     left: 50%;
     top: 0;
-    /* Vertical shift is NOT -50%: the frame image isn't symmetric (the
-       crest bulges up top, the pointer tail hangs down bottom), so a
-       true 50/50 split pushes too much of the frame down into the diver
-       photo below — covering the diver's head. Shifting up further
-       (less negative would be wrong direction — MORE negative than -50%
-       pulls it further up) keeps more of the frame over the hero side
-       and less hanging into the diver side. Tune --crest-shift-y if it
-       still doesn't clear the diver's head on your actual screen sizes. */
     transform: translate(-50%, var(--crest-shift-y, -58%));
     width: min(var(--crest-max-width, 1600px), 96%);
   }
@@ -296,11 +228,6 @@
     text-transform: uppercase;
     margin-top: 2px;
   }
-
-  /* ---------- DIVER SECTION ----------
-     Ambient looping video for now. Reuses the same visual language as
-     .hero (scrim gradient, eyebrow/headline styling) so it feels like
-     part of the same site, not a bolted-on section. */
   .diver-section{
     position: relative;
     min-height: 90vh;
@@ -341,8 +268,6 @@
     color: var(--cream);
     margin-top: 16px;
   }
-
-  /* ---------- FEATURES ---------- */
   .features{
     position: relative; z-index: 2;
     display: grid;
@@ -376,13 +301,11 @@
     color: var(--gold-500); text-decoration: none;
   }
   .feature-card a:hover{ color: var(--gold-300); }
-
   footer{
     text-align: center; padding: 22px 20px;
     font-size: 12px; color: var(--text-dim);
     border-top: 1px solid rgba(212,169,73,0.15);
   }
-
   @media (max-width: 860px){
     .nav-links{ display: none; }
     .hero-inner{ grid-template-columns: 1fr; text-align: center; }
@@ -392,13 +315,11 @@
     .features{ grid-template-columns: 1fr; }
     .hero-scrub-wrap{ height: 260vh; }
   }
-
   @media (max-width: 640px){
     .crest-divider-inner{ width: 94%; }
     .crest-overlay{ padding: 0 5%; top: 5%; }
     .crest-stat{ display: none; }
   }
-
   @media (prefers-reduced-motion: reduce){
     .hero-video{ display: none; }
     .hero-scrub-canvas{ opacity: 1 !important; }
@@ -450,18 +371,6 @@
   </section>
 </div>
 
-<!-- ============================================================
-     CREST DIVIDER — sits exactly ON the seam between the hero and
-     diver sections (see the height:0 + translate(-50%) technique in
-     the .crest-divider / .crest-divider-inner CSS rules — this keeps
-     it centered on the seam at any screen size, not just one guessed
-     pixel value). ynv_divider_frame.png is transparent outside its
-     own gold border, so the hero video shows through above it and
-     the diver video shows through below it — no page background
-     should ever be visible behind the frame.
-     Headline, subtext, and stat numbers are real HTML text laid
-     on top so they stay sharp at any zoom and remain editable.
-     ============================================================ -->
 <div class="crest-divider">
   <div class="crest-divider-inner">
     <img src="assets/images/ynv_divider_frame.png" alt="" class="crest-divider-img" />
@@ -482,13 +391,6 @@
   </div>
 </div>
 
-<!-- ============================================================
-     DIVER SECTION — currently just the ambient looping video.
-     This will later become a scroll-scrubbed story section (back-roll
-     entry -> descent -> ocean floor investigation) once that footage
-     is ready, following the same pattern as .hero-scrub-wrap above.
-     For now it's a simple autoplay loop with a text overlay.
-     ============================================================ -->
 <section class="diver-section">
   <video class="diver-video" id="diver-video" autoplay muted loop playsinline poster="">
     <source src="diver-boat-loop-seamless.mp4" type="video/mp4">
@@ -530,14 +432,6 @@
 
 <footer>&copy; 2026 Young Navy Veterans. Not affiliated with any political party.</footer>
 
-<!--
-  FIX: previously loaded three.min.js from cdnjs and GLTFLoader.js from a
-  separate cdnjs path. Even though both were nominally "r128", cdnjs can
-  serve slightly mismatched builds across its two paths, which produced:
-  "Uncaught TypeError: THREE.GLTFLoader is not a constructor"
-  Pinning both files to the exact same version from the same CDN (unpkg,
-  npm-backed and version-locked) resolves the mismatch.
--->
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
 <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
@@ -550,7 +444,7 @@
 
   if(typeof THREE === 'undefined'){
     console.error('Medallion: THREE.js failed to load from CDN — check network/ad-blocker. Fallback ring will stay visible.');
-    return; // fallback ring stays visible, nothing else to do
+    return;
   }
   if(typeof THREE.GLTFLoader !== 'function'){
     console.error('Medallion: THREE.GLTFLoader did not load correctly (version mismatch or CDN issue). Fallback ring will stay visible.');
@@ -566,7 +460,7 @@
 
   function resize(){
     var w = wrap.clientWidth, h = wrap.clientHeight;
-    if(w < 2 || h < 2) return; // don't feed the renderer a bogus 0-size box
+    if(w < 2 || h < 2) return;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
@@ -587,10 +481,6 @@
   var medallion = null;
   var loader = new THREE.GLTFLoader();
 
-  // medallion.glb was exported with Draco mesh compression, so GLTFLoader
-  // needs a DRACOLoader handed to it to decompress the geometry.
-  // Decoder files are fetched from Google's hosted CDN (no need to
-  // self-host the .wasm/.js decoder).
   var dracoLoader = new THREE.DRACOLoader();
   dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
   loader.setDRACOLoader(dracoLoader);
@@ -598,27 +488,13 @@
   loader.load('medallion.glb', function(gltf){
     medallion = gltf.scene;
 
-    // IMPORTANT: scale must be applied BEFORE measuring/canceling the
-    // model's center. Scale transforms apply around the object's own
-    // local origin — so if we center first and scale second, the
-    // offset we cancel gets stretched/shrunk by the scale afterward,
-    // leaving the model's true visual mass off-axis from the rotation
-    // pivot. That mismatch is exactly what caused the medallion to
-    // sweep an arc ("circling a pole") instead of spinning in place.
     var box0 = new THREE.Box3().setFromObject(medallion);
     var size = new THREE.Vector3();
     box0.getSize(size);
     var maxDim = Math.max(size.x, size.y, size.z);
-    // Target a diameter noticeably smaller than the frame's visible
-    // height/width so the widest points (wreath tips, banner ends)
-    // never clip the camera edges as it rotates.
     var scale = 2.15 / maxDim;
     medallion.scale.setScalar(scale);
 
-    // Re-measure AFTER scaling, in the model's final real-world size,
-    // then cancel that center — this keeps the rotation pivot locked
-    // to the model's actual visual middle, no matter what the scale
-    // factor was.
     medallion.updateMatrixWorld(true);
     var box1 = new THREE.Box3().setFromObject(medallion);
     var center = new THREE.Vector3();
@@ -631,16 +507,13 @@
     medallion.userData.group = group;
 
     resize();
-    if(fallback) fallback.style.display = 'none'; // model loaded, hide the placeholder ring
+    if(fallback) fallback.style.display = 'none';
   }, undefined, function(err){
     console.error('Medallion: medallion.glb failed to load — check that the file exists at the repo root and the path is exactly "medallion.glb". Fallback ring stays visible.', err);
   });
 
   window.addEventListener('resize', resize);
   resize();
-  // Re-measure repeatedly early on — the medallion sits inside a
-  // position:sticky container, which can report a 0-size box on the
-  // very first layout pass(es) before the browser finishes settling it.
   window.addEventListener('load', resize);
   setTimeout(resize, 250);
   setTimeout(resize, 1000);
@@ -669,24 +542,6 @@
 </script>
 
 <script>
-/* ============================================================
-   ANCHOR-DROP SCROLL SCRUB
-   Video plays normally at rest. The instant the user starts
-   scrolling, we freeze the video's *current* frame onto a canvas
-   sitting exactly on top of it, then crossfade video -> canvas
-   over ~150ms. Because the canvas is showing the exact pixels
-   the video was already showing, the swap is invisible. From
-   there, scroll position drives which frame from
-   frames/anchor-drop/ is drawn, playing out the anchor drop.
-
-   NOTE: the frames/anchor-drop/ folder is not yet present in the
-   repo, so frame detection will currently find 0 frames and this
-   whole scrub effect will silently no-op — the hero video will
-   just keep looping normally, even while scrolling. Upload the
-   numbered frame_0001.jpg... sequence to frames/anchor-drop/ to
-   enable it. Frame count is auto-detected — no need to hard-code it.
-   Raise FRAME_PROBE_CAP if you ever have more than 300 frames.
-   ============================================================ */
 (function(){
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -697,8 +552,8 @@
   var medallionWrap = document.getElementById('medallion-wrap');
 
   var FRAME_DIR = 'frames/anchor-drop/';
-  var FRAME_PROBE_CAP = 300; // raise this if you have more than 300 frames
-  var frames = [];       // loaded Image objects, index 0 = frame_0001.jpg
+  var FRAME_PROBE_CAP = 300;
+  var frames = [];
   var totalFrames = 0;
   var framesReady = false;
 
@@ -708,18 +563,12 @@
     return 'frame_' + s + '.jpg';
   }
 
-  // Check whether a single frame exists, without polluting the console
-  // with a 404 network error for the (many) misses — we use a HEAD
-  // fetch wrapped in try/catch instead of a raw <img> probe.
   function frameExists(idx){
     return fetch(FRAME_DIR + padFrame(idx), { method: 'HEAD' })
       .then(function(res){ return res.ok; })
       .catch(function(){ return false; });
   }
 
-  // Efficiently find the exact frame count via exponential search +
-  // binary search, instead of brute-force probing every index — this
-  // keeps network requests (and console noise) to a minimum.
   function detectFrameCount(){
     var lastGood = 0;
     var firstBad = null;
@@ -797,7 +646,6 @@
   window.addEventListener('resize', resizeCanvas);
   resizeCanvas();
 
-  // Draw an image/video frame into the canvas using object-fit: cover math.
   function drawCover(source, sw, sh){
     var cw = canvas.width, ch = canvas.height;
     if(!sw || !sh || !cw || !ch) return;
@@ -807,7 +655,7 @@
     ctx.drawImage(source, dx, dy, dw, dh);
   }
 
-  var scrubbing = false;      // true once we've crossfaded from video to canvas
+  var scrubbing = false;
   var lastDrawnFrame = -1;
 
   function freezeVideoIntoCanvas(){
@@ -817,7 +665,7 @@
     canvas.style.opacity = '1';
     video.pause();
     scrubbing = true;
-    if(medallionWrap) medallionWrap.style.opacity = '0'; // hide medallion so it doesn't block the ship during the anchor drop
+    if(medallionWrap) medallionWrap.style.opacity = '0';
   }
 
   function resumeVideo(){
@@ -827,7 +675,7 @@
     if(p && p.catch) p.catch(function(){});
     scrubbing = false;
     lastDrawnFrame = -1;
-    if(medallionWrap) medallionWrap.style.opacity = '1'; // bring the medallion back once we're back on the video
+    if(medallionWrap) medallionWrap.style.opacity = '1';
   }
 
   function drawFrameForProgress(t){
@@ -839,10 +687,8 @@
     drawCover(img, img.naturalWidth, img.naturalHeight);
   }
 
-  var ENTER_THRESHOLD = 0.30; // scroll buffer: video keeps playing normally
-                               // until this fraction of the scrub distance
-                               // has been scrolled, THEN the crossfade starts
-  var EXIT_THRESHOLD = 0.24;  // hysteresis so it doesn't flicker at the boundary
+  var ENTER_THRESHOLD = 0.30;
+  var EXIT_THRESHOLD = 0.24;
 
   function onScroll(){
     if(reduceMotion || !framesReady) return;
@@ -863,7 +709,6 @@
     }
 
     if(scrubbing){
-      // Remap so the frame sequence spans ENTER_THRESHOLD -> 1.0
       var t = (progress - ENTER_THRESHOLD) / (1 - ENTER_THRESHOLD);
       if(t < 0) t = 0;
       if(t > 1) t = 1;
