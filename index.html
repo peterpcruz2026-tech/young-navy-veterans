@@ -252,6 +252,12 @@
     transition: opacity 0.15s linear;
     pointer-events: none;
   }
+  .diver-scrub-source{
+    position: absolute;
+    width: 1px; height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
   .diver-scrim{
     position: absolute; inset: 0; z-index: 1;
     background:
@@ -433,6 +439,10 @@
       <source src="diver-boat-loop-seamless.mp4" type="video/mp4">
     </video>
     <canvas class="diver-scrub-canvas" id="diver-scrub-canvas"></canvas>
+    <!-- Hidden source video used purely as a frame source for the scroll-driven scrub.
+         It is never .play()'d — we scrub it by setting currentTime and drawing each
+         resulting frame onto the canvas above, both forward and in reverse. -->
+    <video class="diver-scrub-source" id="diver-scrub-source" src="diver.mp4" muted playsinline preload="auto"></video>
     <div class="diver-scrim"></div>
     <div class="diver-inner" id="diver-inner">
       <p class="eyebrow"><span class="rule"></span>Beneath The Surface<span class="rule"></span></p>
@@ -774,46 +784,61 @@
   var canvas = document.getElementById('diver-scrub-canvas');
   var ctx = canvas.getContext('2d');
   var beforeText = document.getElementById('diver-inner');       // existing intro text block
-  var afterText = document.getElementById('diver-after-text');   // new text block, shown after frame 59
+  var afterText = document.getElementById('diver-after-text');   // new text block, shown after playback completes
 
-  var FRAME_DIR = 'frames/back-roll-entry/';
-  var TOTAL_FRAMES = 59;
-  var PLAY_DURATION_MS = 1800;    // how long the 1->59 sequence takes once triggered
-  var TRIGGER_PROGRESS = 0.55;    // how far scrolled into the wrap before it fires — gives the video real screen time first
-  var RESET_PROGRESS = 0.10;      // scrolling back above this resets to live video
+  // Scrub source: instead of a 1..59 image sequence, we scrub diver.mp4 itself by
+  // setting its currentTime and drawing each resulting frame onto the canvas —
+  // forward on scroll down, backward (reverse) on scroll back up.
+  var scrubVideo = document.getElementById('diver-scrub-source');
+  var PLAY_DURATION_MS = 1800;    // how long the forward/reverse scrub takes once triggered
+  var TRIGGER_PROGRESS = 0.55;    // how far scrolled into the wrap before it fires — gives the boat loop real screen time first
+  var RESET_PROGRESS = 0.10;      // scrolling back above this resets to live boat-loop video
 
-  var frames = [];
-  var framesReady = false;
+  var videoReady = false;
+  var duration = 0;
+  var SEEK_EPSILON = 0.03;
 
-  function padFrame(n){
-    var s = String(n);
-    while(s.length < 3) s = '0' + s; // 3-digit: frame_001.jpg ... frame_059.jpg
-    return 'frame_' + s + '.jpg';
-  }
-
-  function loadFrameImages(count){
-    var loadPromises = [];
-    for(var i = 1; i <= count; i++){
-      (function(idx){
-        loadPromises.push(new Promise(function(resolve){
-          var img = new Image();
-          img.onload = function(){ resolve(img); };
-          img.onerror = function(){
-            console.warn('Diver scrub: frame failed to load — ' + FRAME_DIR + padFrame(idx));
-            resolve(null);
-          };
-          img.src = FRAME_DIR + padFrame(idx);
-        }));
-      })(i);
+  scrubVideo.addEventListener('loadedmetadata', function(){
+    duration = scrubVideo.duration;
+    videoReady = isFinite(duration) && duration > 0;
+    if(!videoReady){
+      console.warn('Diver scrub: diver.mp4 metadata loaded but duration is invalid.');
     }
-    return Promise.all(loadPromises);
+  });
+  scrubVideo.addEventListener('error', function(){
+    console.warn('Diver scrub: diver.mp4 failed to load — check the path/filename.');
+  });
+
+  // Seeking on a <video> is asynchronous, so we queue the latest requested time and
+  // only issue a new seek once the previous one has resolved via the 'seeked' event.
+  var seekPending = false;
+  var pendingTime = null;
+
+  function clampTime(t){
+    if(t < 0) t = 0;
+    if(t > duration - 0.05) t = Math.max(0, duration - 0.05);
+    return t;
   }
 
-  loadFrameImages(TOTAL_FRAMES).then(function(imgs){
-    frames = imgs.filter(function(img){ return img !== null; });
-    framesReady = frames.length > 0;
-    if(!framesReady){
-      console.warn('Diver scrub: no frames loaded from ' + FRAME_DIR);
+  function requestSeek(time){
+    if(!videoReady) return;
+    pendingTime = clampTime(time);
+    if(!seekPending){
+      seekPending = true;
+      scrubVideo.currentTime = pendingTime;
+    }
+  }
+
+  scrubVideo.addEventListener('seeked', function(){
+    drawCover(scrubVideo, scrubVideo.videoWidth, scrubVideo.videoHeight);
+    seekPending = false;
+    if(pendingTime !== null && Math.abs(pendingTime - scrubVideo.currentTime) > SEEK_EPSILON){
+      var t = pendingTime;
+      pendingTime = null;
+      seekPending = true;
+      scrubVideo.currentTime = t;
+    } else {
+      pendingTime = null;
     }
   });
 
@@ -836,9 +861,9 @@
   }
 
   // 'video'     -> diver-boat-loop-seamless.mp4 playing normally, nothing triggered
-  // 'playing'   -> forward sequence actively running frame 1..59, cannot be interrupted
-  // 'held'      -> finished, holding on frame 59
-  // 'reversing' -> scrolled back up from 'held', running frame 59..1, cannot be interrupted
+  // 'playing'   -> forward scrub actively running 0 -> duration on diver.mp4, cannot be interrupted
+  // 'held'      -> finished, holding on the last frame of diver.mp4
+  // 'reversing' -> scrolled back up from 'held', running duration -> 0, cannot be interrupted
   var state = 'video';
   var playStartTime = 0;
 
@@ -862,10 +887,11 @@
   }
 
   function startPlayback(){
-    if(!framesReady || state !== 'video') return;
+    if(!videoReady || state !== 'video') return;
     state = 'playing';
     playStartTime = performance.now();
     freezeVideoIntoCanvas();
+    requestSeek(0);
     if(beforeText) beforeText.classList.add('is-hidden'); // fade out intro text the moment playback starts
     requestAnimationFrame(stepPlayback);
   }
@@ -875,12 +901,10 @@
     var elapsed = now - playStartTime;
     var t = Math.min(elapsed / PLAY_DURATION_MS, 1);
     var eased = easeOutCubic(t);
-    var idx = Math.round(eased * (frames.length - 1));
-    var img = frames[idx];
-    if(img) drawCover(img, img.naturalWidth, img.naturalHeight);
+    requestSeek(eased * duration);
 
     if(t >= 1){
-      state = 'held'; // stays on frame 59 — does not auto-reverse, only reverses on scroll-up
+      state = 'held'; // stays on the last frame — does not auto-reverse, only reverses on scroll-up
       if(afterText) afterText.classList.add('is-visible'); // reveal the "diver located" text
       return;
     }
@@ -888,7 +912,7 @@
   }
 
   function startReverse(){
-    if(!framesReady || state !== 'held') return;
+    if(!videoReady || state !== 'held') return;
     state = 'reversing';
     playStartTime = performance.now();
     if(afterText) afterText.classList.remove('is-visible'); // fade out the reveal text as we scroll back
@@ -900,9 +924,7 @@
     var elapsed = now - playStartTime;
     var t = Math.min(elapsed / PLAY_DURATION_MS, 1);
     var eased = easeOutCubic(t);
-    var idx = Math.round((1 - eased) * (frames.length - 1)); // runs 58 -> 0
-    var img = frames[idx];
-    if(img) drawCover(img, img.naturalWidth, img.naturalHeight);
+    requestSeek((1 - eased) * duration); // runs duration -> 0
 
     if(t >= 1){
       state = 'video';
@@ -927,9 +949,9 @@
     // Video plays/loops freely from 0 up to TRIGGER_PROGRESS — that gap is deliberate
     // screen time so the person actually sees the boat before anything triggers.
     if(state === 'video' && progress >= TRIGGER_PROGRESS){
-      startPlayback(); // fires once, plays frame 1->59 to completion on its own timer, ignores further scroll
+      startPlayback(); // fires once, scrubs diver.mp4 forward to completion on its own timer, ignores further scroll
     } else if(state === 'held' && progress <= RESET_PROGRESS){
-      startReverse(); // scrolled back up — plays frame 59->1 to completion, then resumes live video
+      startReverse(); // scrolled back up — scrubs diver.mp4 in reverse to completion, then resumes live video
     }
     // 'playing' and 'reversing' states intentionally ignore scroll input entirely
     // until their sequence finishes — that's what stops it from ever freezing mid-frame.
