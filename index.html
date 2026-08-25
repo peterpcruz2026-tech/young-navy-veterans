@@ -235,11 +235,17 @@
     align-items: center;
     overflow: hidden;
   }
-  .diver-video{
+  .diver-video, .diver-scrub-canvas{
     position: absolute; inset: 0;
     width: 100%; height: 100%;
     object-fit: cover;
     z-index: 0;
+  }
+  .diver-video{ transition: opacity 0.15s linear; }
+  .diver-scrub-canvas{
+    opacity: 0;
+    transition: opacity 0.15s linear;
+    pointer-events: none;
   }
   .diver-scrim{
     position: absolute; inset: 0; z-index: 1;
@@ -253,6 +259,12 @@
     margin: 0 auto;
     padding: 64px clamp(20px, 4vw, 48px);
     text-align: center;
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  .diver-inner.is-hidden{
+    opacity: 0;
+    transform: translateY(-12px);
+    pointer-events: none;
   }
   .diver-headline{
     font-size: clamp(28px, 4.2vw, 48px);
@@ -267,6 +279,23 @@
     font-size: clamp(17px, 2vw, 22px);
     color: var(--cream);
     margin-top: 16px;
+  }
+  .diver-after-text{
+    position: absolute; z-index: 2;
+    /* Placeholder position — tell me where the diver actually lands in frame 59
+       and I'll swap these top/left values to sit right next to them. */
+    top: 62%; left: 50%;
+    transform: translate(-50%, 0);
+    text-align: center;
+    max-width: 500px;
+    padding: 0 20px;
+    opacity: 0;
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    pointer-events: none;
+  }
+  .diver-after-text.is-visible{
+    opacity: 1;
+    pointer-events: auto;
   }
   .features{
     position: relative; z-index: 2;
@@ -323,6 +352,7 @@
   @media (prefers-reduced-motion: reduce){
     .hero-video{ display: none; }
     .hero-scrub-canvas{ opacity: 1 !important; }
+    .diver-scrub-canvas{ display: none; }
   }
 </style>
 </head>
@@ -395,11 +425,17 @@
   <video class="diver-video" id="diver-video" autoplay muted loop playsinline poster="">
     <source src="diver-boat-loop-seamless.mp4" type="video/mp4">
   </video>
+  <canvas class="diver-scrub-canvas" id="diver-scrub-canvas"></canvas>
   <div class="diver-scrim"></div>
-  <div class="diver-inner">
+  <div class="diver-inner" id="diver-inner">
     <p class="eyebrow"><span class="rule"></span>Beneath The Surface<span class="rule"></span></p>
     <h2 class="diver-headline font-display">Trained for the depths.<br>Ready for the call.</h2>
     <p class="diver-tagline">Every mission begins the moment we step off the boat.</p>
+  </div>
+  <div class="diver-after-text" id="diver-after-text">
+    <p class="eyebrow"><span class="rule"></span>Position Confirmed<span class="rule"></span></p>
+    <h2 class="diver-headline font-display">Wherever the mission takes us.</h2>
+    <p class="diver-tagline">Ready in the water, ready on land.</p>
   </div>
 </section>
 
@@ -718,6 +754,132 @@
 
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
+})();
+</script>
+
+<script>
+(function(){
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var section = document.querySelector('.diver-section');
+  var video = document.getElementById('diver-video');
+  var canvas = document.getElementById('diver-scrub-canvas');
+  var ctx = canvas.getContext('2d');
+  var beforeText = document.getElementById('diver-inner');       // existing intro text block
+  var afterText = document.getElementById('diver-after-text');   // new text block, shown after frame 59
+
+  var FRAME_DIR = 'frames/back-roll-entry/';
+  var TOTAL_FRAMES = 59;
+  var PLAY_DURATION_MS = 1800;   // how long the 1->59 sequence takes once triggered
+  var TRIGGER_RATIO = 0.45;      // how much of the section must be visible before it fires
+
+  var frames = [];
+  var framesReady = false;
+
+  function padFrame(n){
+    var s = String(n);
+    while(s.length < 3) s = '0' + s; // 3-digit: frame_001.jpg ... frame_059.jpg
+    return 'frame_' + s + '.jpg';
+  }
+
+  function loadFrameImages(count){
+    var loadPromises = [];
+    for(var i = 1; i <= count; i++){
+      (function(idx){
+        loadPromises.push(new Promise(function(resolve){
+          var img = new Image();
+          img.onload = function(){ resolve(img); };
+          img.onerror = function(){
+            console.warn('Diver scrub: frame failed to load — ' + FRAME_DIR + padFrame(idx));
+            resolve(null);
+          };
+          img.src = FRAME_DIR + padFrame(idx);
+        }));
+      })(i);
+    }
+    return Promise.all(loadPromises);
+  }
+
+  loadFrameImages(TOTAL_FRAMES).then(function(imgs){
+    frames = imgs.filter(function(img){ return img !== null; });
+    framesReady = frames.length > 0;
+    if(!framesReady){
+      console.warn('Diver scrub: no frames loaded from ' + FRAME_DIR);
+    }
+  });
+
+  function resizeCanvas(){
+    var rect = canvas.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  function drawCover(source, sw, sh){
+    var cw = canvas.width, ch = canvas.height;
+    if(!sw || !sh || !cw || !ch) return;
+    var scale = Math.max(cw / sw, ch / sh);
+    var dw = sw * scale, dh = sh * scale;
+    var dx = (cw - dw) / 2, dy = (ch - dh) / 2;
+    ctx.drawImage(source, dx, dy, dw, dh);
+  }
+
+  // 'video'   -> diver-boat-loop-seamless.mp4 playing normally, nothing triggered
+  // 'playing' -> mini sequence actively running frame 1..59, cannot be interrupted
+  // 'held'    -> finished, holding on frame 59
+  var state = 'video';
+  var playStartTime = 0;
+
+  function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+
+  function freezeVideoIntoCanvas(){
+    resizeCanvas();
+    drawCover(video, video.videoWidth, video.videoHeight);
+    video.style.opacity = '0';
+    canvas.style.opacity = '1';
+    video.pause();
+  }
+
+  function startPlayback(){
+    if(!framesReady || state !== 'video') return;
+    state = 'playing';
+    playStartTime = performance.now();
+    freezeVideoIntoCanvas();
+    if(beforeText) beforeText.classList.add('is-hidden'); // fade out intro text the moment playback starts
+    requestAnimationFrame(stepPlayback);
+  }
+
+  function stepPlayback(now){
+    if(state !== 'playing') return;
+    var elapsed = now - playStartTime;
+    var t = Math.min(elapsed / PLAY_DURATION_MS, 1);
+    var eased = easeOutCubic(t);
+    var idx = Math.round(eased * (frames.length - 1));
+    var img = frames[idx];
+    if(img) drawCover(img, img.naturalWidth, img.naturalHeight);
+
+    if(t >= 1){
+      state = 'held'; // stays on frame 59 — does not reverse, does not replay
+      if(afterText) afterText.classList.add('is-visible'); // reveal the "diver located" text
+      return;
+    }
+    requestAnimationFrame(stepPlayback);
+  }
+
+  // Fires once the diver section is sufficiently visible while scrolling down.
+  // Unlike the hero, this doesn't need a tall scroll-wrapper — it's a one-shot reveal.
+  if('IntersectionObserver' in window && !reduceMotion){
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting && entry.intersectionRatio >= TRIGGER_RATIO && state === 'video'){
+          startPlayback();
+        }
+      });
+    }, { threshold: [0, TRIGGER_RATIO, 1] });
+    obs.observe(section);
+  }
 })();
 </script>
 
