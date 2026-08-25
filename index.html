@@ -386,22 +386,32 @@
   loader.load('medallion.glb', function(gltf){
     medallion = gltf.scene;
 
-    var box = new THREE.Box3().setFromObject(medallion);
+    // IMPORTANT: scale must be applied BEFORE measuring/canceling the
+    // model's center. Scale transforms apply around the object's own
+    // local origin — so if we center first and scale second, the
+    // offset we cancel gets stretched/shrunk by the scale afterward,
+    // leaving the model's true visual mass off-axis from the rotation
+    // pivot. That mismatch is exactly what caused the medallion to
+    // sweep an arc ("circling a pole") instead of spinning in place.
+    var box0 = new THREE.Box3().setFromObject(medallion);
     var size = new THREE.Vector3();
-    box.getSize(size);
-    var sphere = new THREE.Sphere();
-    box.getBoundingSphere(sphere);
-    // Center on the bounding sphere's center rather than the box center —
-    // for an irregular silhouette (laurel wreath + off-center bottom
-    // banner) this keeps rotation visually stable instead of swinging
-    // the heavier side wider through the frame.
-    medallion.position.sub(sphere.center);
+    box0.getSize(size);
     var maxDim = Math.max(size.x, size.y, size.z);
     // Target a diameter noticeably smaller than the frame's visible
     // height/width so the widest points (wreath tips, banner ends)
     // never clip the camera edges as it rotates.
     var scale = 2.15 / maxDim;
     medallion.scale.setScalar(scale);
+
+    // Re-measure AFTER scaling, in the model's final real-world size,
+    // then cancel that center — this keeps the rotation pivot locked
+    // to the model's actual visual middle, no matter what the scale
+    // factor was.
+    medallion.updateMatrixWorld(true);
+    var box1 = new THREE.Box3().setFromObject(medallion);
+    var center = new THREE.Vector3();
+    box1.getCenter(center);
+    medallion.position.sub(center);
 
     var group = new THREE.Group();
     group.add(medallion);
