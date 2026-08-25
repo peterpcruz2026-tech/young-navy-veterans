@@ -191,6 +191,51 @@
   }
   #medallion-canvas{ position: relative; z-index: 2; width: 100%; height: 100%; display: block; }
 
+  /* ---------- DIVER SECTION ----------
+     Ambient looping video for now. Reuses the same visual language as
+     .hero (scrim gradient, eyebrow/headline styling) so it feels like
+     part of the same site, not a bolted-on section. */
+  .diver-section{
+    position: relative;
+    min-height: 90vh;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+  }
+  .diver-video{
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    z-index: 0;
+  }
+  .diver-scrim{
+    position: absolute; inset: 0; z-index: 1;
+    background:
+      linear-gradient(180deg, rgba(6,11,20,0.75) 0%, rgba(6,11,20,0.15) 30%, rgba(6,11,20,0.15) 70%, rgba(6,11,20,0.85) 100%);
+  }
+  .diver-inner{
+    position: relative; z-index: 2;
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 64px clamp(20px, 4vw, 48px);
+    text-align: center;
+  }
+  .diver-headline{
+    font-size: clamp(28px, 4.2vw, 48px);
+    line-height: 1.15;
+    color: var(--gold-100);
+    text-shadow: 0 2px 18px rgba(0,0,0,0.6);
+    margin-top: 18px;
+  }
+  .diver-tagline{
+    font-family: 'EB Garamond', serif;
+    font-style: italic;
+    font-size: clamp(17px, 2vw, 22px);
+    color: var(--cream);
+    margin-top: 16px;
+  }
+
   /* ---------- FEATURES ---------- */
   .features{
     position: relative; z-index: 2;
@@ -292,6 +337,26 @@
     </div>
   </section>
 </div>
+
+
+<!-- ============================================================
+     DIVER SECTION — currently just the ambient looping video.
+     This will later become a scroll-scrubbed story section (back-roll
+     entry -> descent -> ocean floor investigation) once that footage
+     is ready, following the same pattern as .hero-scrub-wrap above.
+     For now it's a simple autoplay loop with a text overlay.
+     ============================================================ -->
+<section class="diver-section">
+  <video class="diver-video" id="diver-video" autoplay muted loop playsinline poster="">
+    <source src="diver-boat-loop-seamless.mp4" type="video/mp4">
+  </video>
+  <div class="diver-scrim"></div>
+  <div class="diver-inner">
+    <p class="eyebrow"><span class="rule"></span>Beneath The Surface<span class="rule"></span></p>
+    <h2 class="diver-headline font-display">Trained for the depths.<br>Ready for the call.</h2>
+    <p class="diver-tagline">Every mission begins the moment we step off the boat.</p>
+  </div>
+</section>
 
 <div class="features">
   <div class="feature-card">
