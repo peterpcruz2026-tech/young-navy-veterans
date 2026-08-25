@@ -191,6 +191,77 @@
   }
   #medallion-canvas{ position: relative; z-index: 2; width: 100%; height: 100%; display: block; }
 
+  /* ---------- CREST DIVIDER ----------
+     Sits between the hero and the diver section. Uses the transparent
+     ynv_divider_frame.png ornamental frame as a full-width background
+     image, with real HTML text positioned on top so copy stays editable,
+     crisp at any zoom, and accessible — instead of baking text into
+     the image itself. */
+  .crest-divider{
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 1400px;
+    margin: -1px auto 0; /* -1px kills any subpixel seam with the video above */
+  }
+  .crest-divider-img{
+    width: 100%;
+    height: auto;
+    display: block;
+    user-select: none;
+    pointer-events: none;
+  }
+  .crest-overlay{
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 9%;
+    top: 6%;
+  }
+  .crest-center{
+    flex: 1;
+    text-align: center;
+    padding: 0 2%;
+  }
+  .crest-heading{
+    font-family: 'Cinzel', serif;
+    font-weight: 600;
+    color: var(--gold-100);
+    font-size: clamp(14px, 2.2vw, 26px);
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+  .crest-sub{
+    font-family: 'EB Garamond', serif;
+    font-style: italic;
+    color: var(--text-dim);
+    font-size: clamp(10px, 1.1vw, 14px);
+    letter-spacing: 0.02em;
+    margin-top: 4px;
+  }
+  .crest-stat{
+    text-align: center;
+    min-width: 70px;
+    flex-shrink: 0;
+  }
+  .crest-stat-num{
+    font-family: 'Cinzel', serif;
+    font-weight: 600;
+    color: var(--gold-300);
+    font-size: clamp(13px, 1.7vw, 20px);
+    line-height: 1.2;
+  }
+  .crest-stat-label{
+    font-size: clamp(8px, 0.85vw, 10px);
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
   /* ---------- DIVER SECTION ----------
      Ambient looping video for now. Reuses the same visual language as
      .hero (scrim gradient, eyebrow/headline styling) so it feels like
@@ -287,6 +358,11 @@
     .hero-scrub-wrap{ height: 260vh; }
   }
 
+  @media (max-width: 640px){
+    .crest-overlay{ padding: 0 5%; top: 4%; }
+    .crest-stat{ display: none; }
+  }
+
   @media (prefers-reduced-motion: reduce){
     .hero-video{ display: none; }
     .hero-scrub-canvas{ opacity: 1 !important; }
@@ -338,6 +414,29 @@
   </section>
 </div>
 
+<!-- ============================================================
+     CREST DIVIDER — separates the hero from the diver section.
+     Frame graphic (ynv_divider_frame.png) is a transparent PNG;
+     the headline, subtext, and stat numbers are real HTML text
+     positioned on top so they stay sharp and editable.
+     ============================================================ -->
+<div class="crest-divider">
+  <img src="assets/images/ynv_divider_frame.png" alt="" class="crest-divider-img" />
+  <div class="crest-overlay">
+    <div class="crest-stat">
+      <div class="crest-stat-num">500+</div>
+      <div class="crest-stat-label">Veterans strong</div>
+    </div>
+    <div class="crest-center">
+      <p class="crest-heading">Once Navy, Always Ready</p>
+      <p class="crest-sub">500+ veterans trained and standing by</p>
+    </div>
+    <div class="crest-stat">
+      <div class="crest-stat-num">24/7</div>
+      <div class="crest-stat-label">Always ready</div>
+    </div>
+  </div>
+</div>
 
 <!-- ============================================================
      DIVER SECTION — currently just the ambient looping video.
