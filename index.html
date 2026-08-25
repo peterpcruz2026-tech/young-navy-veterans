@@ -228,9 +228,14 @@
     text-transform: uppercase;
     margin-top: 2px;
   }
-  .diver-section{
+  .diver-scrub-wrap{
     position: relative;
-    min-height: 90vh;
+    height: 220vh; /* extra scroll room = time for the video to be seen before the frames trigger */
+  }
+  .diver-section{
+    position: sticky;
+    top: 0;
+    min-height: 100vh;
     display: flex;
     align-items: center;
     overflow: hidden;
@@ -343,6 +348,7 @@
     .medallion-wrap{ order: -1; height: 240px; transform: none; }
     .features{ grid-template-columns: 1fr; }
     .hero-scrub-wrap{ height: 260vh; }
+    .diver-scrub-wrap{ height: 180vh; }
   }
   @media (max-width: 640px){
     .crest-divider-inner{ width: 94%; }
@@ -421,23 +427,25 @@
   </div>
 </div>
 
-<section class="diver-section">
-  <video class="diver-video" id="diver-video" autoplay muted loop playsinline poster="">
-    <source src="diver-boat-loop-seamless.mp4" type="video/mp4">
-  </video>
-  <canvas class="diver-scrub-canvas" id="diver-scrub-canvas"></canvas>
-  <div class="diver-scrim"></div>
-  <div class="diver-inner" id="diver-inner">
-    <p class="eyebrow"><span class="rule"></span>Beneath The Surface<span class="rule"></span></p>
-    <h2 class="diver-headline font-display">Trained for the depths.<br>Ready for the call.</h2>
-    <p class="diver-tagline">Every mission begins the moment we step off the boat.</p>
-  </div>
-  <div class="diver-after-text" id="diver-after-text">
-    <p class="eyebrow"><span class="rule"></span>Position Confirmed<span class="rule"></span></p>
-    <h2 class="diver-headline font-display">Wherever the mission takes us.</h2>
-    <p class="diver-tagline">Ready in the water, ready on land.</p>
-  </div>
-</section>
+<div class="diver-scrub-wrap" id="diver-scrub-wrap">
+  <section class="diver-section">
+    <video class="diver-video" id="diver-video" autoplay muted loop playsinline poster="">
+      <source src="diver-boat-loop-seamless.mp4" type="video/mp4">
+    </video>
+    <canvas class="diver-scrub-canvas" id="diver-scrub-canvas"></canvas>
+    <div class="diver-scrim"></div>
+    <div class="diver-inner" id="diver-inner">
+      <p class="eyebrow"><span class="rule"></span>Beneath The Surface<span class="rule"></span></p>
+      <h2 class="diver-headline font-display">Trained for the depths.<br>Ready for the call.</h2>
+      <p class="diver-tagline">Every mission begins the moment we step off the boat.</p>
+    </div>
+    <div class="diver-after-text" id="diver-after-text">
+      <p class="eyebrow"><span class="rule"></span>Position Confirmed<span class="rule"></span></p>
+      <h2 class="diver-headline font-display">Wherever the mission takes us.</h2>
+      <p class="diver-tagline">Ready in the water, ready on land.</p>
+    </div>
+  </section>
+</div>
 
 <div class="features">
   <div class="feature-card">
@@ -761,7 +769,7 @@
 (function(){
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  var section = document.querySelector('.diver-section');
+  var wrap = document.getElementById('diver-scrub-wrap');
   var video = document.getElementById('diver-video');
   var canvas = document.getElementById('diver-scrub-canvas');
   var ctx = canvas.getContext('2d');
@@ -770,8 +778,9 @@
 
   var FRAME_DIR = 'frames/back-roll-entry/';
   var TOTAL_FRAMES = 59;
-  var PLAY_DURATION_MS = 1800;   // how long the 1->59 sequence takes once triggered
-  var TRIGGER_RATIO = 0.45;      // how much of the section must be visible before it fires
+  var PLAY_DURATION_MS = 1800;    // how long the 1->59 sequence takes once triggered
+  var TRIGGER_PROGRESS = 0.55;    // how far scrolled into the wrap before it fires — gives the video real screen time first
+  var RESET_PROGRESS = 0.10;      // scrolling back above this resets to live video
 
   var frames = [];
   var framesReady = false;
@@ -868,18 +877,39 @@
     requestAnimationFrame(stepPlayback);
   }
 
-  // Fires once the diver section is sufficiently visible while scrolling down.
-  // Unlike the hero, this doesn't need a tall scroll-wrapper — it's a one-shot reveal.
-  if('IntersectionObserver' in window && !reduceMotion){
-    var obs = new IntersectionObserver(function(entries){
-      entries.forEach(function(entry){
-        if(entry.isIntersecting && entry.intersectionRatio >= TRIGGER_RATIO && state === 'video'){
-          startPlayback();
-        }
-      });
-    }, { threshold: [0, TRIGGER_RATIO, 1] });
-    obs.observe(section);
+  function resumeVideo(){
+    video.style.opacity = '1';
+    canvas.style.opacity = '0';
+    var p = video.play();
+    if(p && p.catch) p.catch(function(){});
+    if(beforeText) beforeText.classList.remove('is-hidden');
+    if(afterText) afterText.classList.remove('is-visible');
   }
+
+  function onScroll(){
+    if(reduceMotion) return;
+
+    var rect = wrap.getBoundingClientRect();
+    var scrollable = wrap.offsetHeight - window.innerHeight;
+    if(scrollable <= 0) return;
+
+    var scrolled = -rect.top;
+    var progress = scrolled / scrollable;
+    if(progress < 0) progress = 0;
+    if(progress > 1) progress = 1;
+
+    // Video plays/loops freely from 0 up to TRIGGER_PROGRESS — that gap is deliberate
+    // screen time so the person actually sees the boat before anything triggers.
+    if(state === 'video' && progress >= TRIGGER_PROGRESS){
+      startPlayback(); // fires once, plays frame 1->59 to completion on its own timer, ignores further scroll
+    } else if((state === 'held' || state === 'playing') && progress <= RESET_PROGRESS){
+      state = 'video';
+      resumeVideo();
+    }
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
 })();
 </script>
 
