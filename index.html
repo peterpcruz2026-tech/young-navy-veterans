@@ -19,6 +19,14 @@
     --red-800: #5c161a;
     --cream: #f3ead0;
     --text-dim: #b9c2cf;
+    /* Crest divider tuning — adjust these two if the frame doesn't line
+       up right on your actual screen: raise --crest-max-width to make
+       the frame reach closer to full screen edges; make --crest-shift-y
+       more negative (e.g. -62%) to pull the frame further up and clear
+       more of the diver's head, or less negative (e.g. -52%) if it's
+       now sitting too high and cutting off too much of the crest. */
+    --crest-max-width: 1600px;
+    --crest-shift-y: -58%;
   }
   *{ box-sizing: border-box; margin: 0; padding: 0; }
   html{ scroll-behavior: smooth; }
@@ -219,8 +227,16 @@
     position: absolute;
     left: 50%;
     top: 0;
-    transform: translate(-50%, -50%);
-    width: min(1100px, 92%);
+    /* Vertical shift is NOT -50%: the frame image isn't symmetric (the
+       crest bulges up top, the pointer tail hangs down bottom), so a
+       true 50/50 split pushes too much of the frame down into the diver
+       photo below — covering the diver's head. Shifting up further
+       (less negative would be wrong direction — MORE negative than -50%
+       pulls it further up) keeps more of the frame over the hero side
+       and less hanging into the diver side. Tune --crest-shift-y if it
+       still doesn't clear the diver's head on your actual screen sizes. */
+    transform: translate(-50%, var(--crest-shift-y, -58%));
+    width: min(var(--crest-max-width, 1600px), 96%);
   }
   .crest-divider-img{
     width: 100%;
@@ -234,7 +250,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 9%;
+    padding: 0 11%;
     top: 8%;
   }
   .crest-center{
@@ -246,18 +262,20 @@
     font-family: 'Cinzel', serif;
     font-weight: 600;
     color: var(--gold-100);
-    font-size: clamp(13px, 2vw, 24px);
-    letter-spacing: 0.06em;
+    font-size: clamp(10px, 1.3vw, 18px);
+    letter-spacing: 0.03em;
     line-height: 1.2;
     text-transform: uppercase;
+    white-space: nowrap;
   }
   .crest-sub{
     font-family: 'EB Garamond', serif;
     font-style: italic;
     color: var(--text-dim);
-    font-size: clamp(9px, 1vw, 13px);
+    font-size: clamp(8px, 0.8vw, 12px);
     letter-spacing: 0.02em;
-    margin-top: 4px;
+    margin-top: 3px;
+    white-space: nowrap;
   }
   .crest-stat{
     text-align: center;
