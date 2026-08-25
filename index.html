@@ -173,6 +173,10 @@
     min-width: 200px;
     display: flex; align-items: center; justify-content: center;
     transition: opacity 0.25s ease;
+    /* Nudges the medallion right to close the empty margin outside the
+       centered hero-inner container. Tune --medallion-shift-x: raise it
+       for more rightward shift, lower/negative to bring it back left. */
+    transform: translateX(var(--medallion-shift-x, 60px));
   }
   /* Visible fallback so this spot is never blank while the GLB loads,
      or if it fails to load for any reason (bad path, slow network, etc). */
@@ -233,7 +237,7 @@
     .hero-inner{ grid-template-columns: 1fr; text-align: center; }
     .eyebrow{ justify-content: center; }
     .hero-cta{ justify-content: center; }
-    .medallion-wrap{ order: -1; height: 240px; }
+    .medallion-wrap{ order: -1; height: 240px; transform: none; }
     .features{ grid-template-columns: 1fr; }
     .hero-scrub-wrap{ height: 260vh; }
   }
