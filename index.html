@@ -287,13 +287,12 @@
   }
   .diver-after-text{
     position: absolute; z-index: 2;
-    /* Placeholder position — tell me where the diver actually lands in frame 59
-       and I'll swap these top/left values to sit right next to them. */
-    top: 62%; left: 50%;
+    /* Empty sky/water space above the boat hull, upper-right of frame 59 */
+    top: 10%; left: 72%;
     transform: translate(-50%, 0);
     text-align: center;
-    max-width: 500px;
-    padding: 0 20px;
+    max-width: 320px;
+    padding: 0 16px;
     opacity: 0;
     transition: opacity 0.6s ease, transform 0.6s ease;
     pointer-events: none;
@@ -349,6 +348,7 @@
     .features{ grid-template-columns: 1fr; }
     .hero-scrub-wrap{ height: 260vh; }
     .diver-scrub-wrap{ height: 180vh; }
+    .diver-after-text{ top: 6%; left: 50%; max-width: 86%; }
   }
   @media (max-width: 640px){
     .crest-divider-inner{ width: 94%; }
@@ -835,9 +835,10 @@
     ctx.drawImage(source, dx, dy, dw, dh);
   }
 
-  // 'video'   -> diver-boat-loop-seamless.mp4 playing normally, nothing triggered
-  // 'playing' -> mini sequence actively running frame 1..59, cannot be interrupted
-  // 'held'    -> finished, holding on frame 59
+  // 'video'     -> diver-boat-loop-seamless.mp4 playing normally, nothing triggered
+  // 'playing'   -> forward sequence actively running frame 1..59, cannot be interrupted
+  // 'held'      -> finished, holding on frame 59
+  // 'reversing' -> scrolled back up from 'held', running frame 59..1, cannot be interrupted
   var state = 'video';
   var playStartTime = 0;
 
@@ -849,6 +850,15 @@
     video.style.opacity = '0';
     canvas.style.opacity = '1';
     video.pause();
+  }
+
+  function resumeVideo(){
+    video.style.opacity = '1';
+    canvas.style.opacity = '0';
+    var p = video.play();
+    if(p && p.catch) p.catch(function(){});
+    if(beforeText) beforeText.classList.remove('is-hidden');
+    if(afterText) afterText.classList.remove('is-visible');
   }
 
   function startPlayback(){
@@ -870,20 +880,36 @@
     if(img) drawCover(img, img.naturalWidth, img.naturalHeight);
 
     if(t >= 1){
-      state = 'held'; // stays on frame 59 — does not reverse, does not replay
+      state = 'held'; // stays on frame 59 — does not auto-reverse, only reverses on scroll-up
       if(afterText) afterText.classList.add('is-visible'); // reveal the "diver located" text
       return;
     }
     requestAnimationFrame(stepPlayback);
   }
 
-  function resumeVideo(){
-    video.style.opacity = '1';
-    canvas.style.opacity = '0';
-    var p = video.play();
-    if(p && p.catch) p.catch(function(){});
-    if(beforeText) beforeText.classList.remove('is-hidden');
-    if(afterText) afterText.classList.remove('is-visible');
+  function startReverse(){
+    if(!framesReady || state !== 'held') return;
+    state = 'reversing';
+    playStartTime = performance.now();
+    if(afterText) afterText.classList.remove('is-visible'); // fade out the reveal text as we scroll back
+    requestAnimationFrame(stepReverse);
+  }
+
+  function stepReverse(now){
+    if(state !== 'reversing') return;
+    var elapsed = now - playStartTime;
+    var t = Math.min(elapsed / PLAY_DURATION_MS, 1);
+    var eased = easeOutCubic(t);
+    var idx = Math.round((1 - eased) * (frames.length - 1)); // runs 58 -> 0
+    var img = frames[idx];
+    if(img) drawCover(img, img.naturalWidth, img.naturalHeight);
+
+    if(t >= 1){
+      state = 'video';
+      resumeVideo(); // switches back to the live looping boat video, brings intro text back
+      return;
+    }
+    requestAnimationFrame(stepReverse);
   }
 
   function onScroll(){
@@ -902,10 +928,11 @@
     // screen time so the person actually sees the boat before anything triggers.
     if(state === 'video' && progress >= TRIGGER_PROGRESS){
       startPlayback(); // fires once, plays frame 1->59 to completion on its own timer, ignores further scroll
-    } else if((state === 'held' || state === 'playing') && progress <= RESET_PROGRESS){
-      state = 'video';
-      resumeVideo();
+    } else if(state === 'held' && progress <= RESET_PROGRESS){
+      startReverse(); // scrolled back up — plays frame 59->1 to completion, then resumes live video
     }
+    // 'playing' and 'reversing' states intentionally ignore scroll input entirely
+    // until their sequence finishes — that's what stops it from ever freezing mid-frame.
   }
 
   window.addEventListener('scroll', onScroll, { passive: true });
