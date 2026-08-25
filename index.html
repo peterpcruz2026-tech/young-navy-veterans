@@ -192,24 +192,35 @@
   #medallion-canvas{ position: relative; z-index: 2; width: 100%; height: 100%; display: block; }
 
   /* ---------- CREST DIVIDER ----------
-     Sits ON the seam between the hero and diver sections, overlapping
-     both — not a solid panel between them. ynv_divider_frame.png is a
-     transparent PNG: navy fill exists only *inside* the ornate gold
-     border in the image itself; everything outside that border is
-     transparent, so the hero/diver photos show through around it.
-     Real HTML text sits on top of the image so copy stays editable,
-     crisp at any zoom, and accessible. */
+     Sits exactly ON the seam between the hero and diver sections.
+     ynv_divider_frame.png is transparent outside its own gold border,
+     so the hero video shows through above it and the diver video
+     shows through below it — no page background should ever be
+     visible behind it.
+
+     How the centering works: .crest-divider takes ZERO height in the
+     page flow (height: 0), so it doesn't push the diver section down —
+     it sits exactly at the boundary point where the hero ends and the
+     diver section begins. The inner frame is then absolutely positioned
+     and shifted up by exactly half its OWN rendered height via
+     translate(-50%, -50%). Percentage values in `transform` are always
+     relative to the element's own box, not a hardcoded pixel guess —
+     so this stays correctly centered on the seam at any screen width,
+     unlike a fixed negative-margin value which only worked for one
+     specific rendered size. */
   .crest-divider{
     position: relative;
     z-index: 5; /* above both the hero and diver sections' own content (z-index: 2) */
-    width: 100%;
-    max-width: 1100px;
-    margin: -70px auto -70px; /* pulls the frame up over the hero photo and
-                                  down over the diver photo so it straddles
-                                  the seam instead of sitting between them.
-                                  Tune this if your section heights change. */
+    height: 0;
     pointer-events: none; /* clicks pass through to whatever's behind, since
                               the frame itself has no interactive elements */
+  }
+  .crest-divider-inner{
+    position: absolute;
+    left: 50%;
+    top: 0;
+    transform: translate(-50%, -50%);
+    width: min(1100px, 92%);
   }
   .crest-divider-img{
     width: 100%;
@@ -365,7 +376,7 @@
   }
 
   @media (max-width: 640px){
-    .crest-divider{ margin: -30px auto -30px; max-width: 92%; }
+    .crest-divider-inner{ width: 94%; }
     .crest-overlay{ padding: 0 5%; top: 5%; }
     .crest-stat{ display: none; }
   }
@@ -422,29 +433,33 @@
 </div>
 
 <!-- ============================================================
-     CREST DIVIDER — sits ON the seam between the hero and diver
-     sections, overlapping both photos (see negative margins in
-     the .crest-divider CSS rule). ynv_divider_frame.png is
-     transparent outside its own gold border, so the hero video
-     shows through above it and the diver video shows through
-     below it — no solid panel behind the frame itself.
+     CREST DIVIDER — sits exactly ON the seam between the hero and
+     diver sections (see the height:0 + translate(-50%) technique in
+     the .crest-divider / .crest-divider-inner CSS rules — this keeps
+     it centered on the seam at any screen size, not just one guessed
+     pixel value). ynv_divider_frame.png is transparent outside its
+     own gold border, so the hero video shows through above it and
+     the diver video shows through below it — no page background
+     should ever be visible behind the frame.
      Headline, subtext, and stat numbers are real HTML text laid
      on top so they stay sharp at any zoom and remain editable.
      ============================================================ -->
 <div class="crest-divider">
-  <img src="assets/images/ynv_divider_frame.png" alt="" class="crest-divider-img" />
-  <div class="crest-overlay">
-    <div class="crest-stat">
-      <div class="crest-stat-num">500+</div>
-      <div class="crest-stat-label">Veterans strong</div>
-    </div>
-    <div class="crest-center">
-      <p class="crest-heading">Once Navy, Always Ready</p>
-      <p class="crest-sub">500+ veterans trained and standing by</p>
-    </div>
-    <div class="crest-stat">
-      <div class="crest-stat-num">24/7</div>
-      <div class="crest-stat-label">Always ready</div>
+  <div class="crest-divider-inner">
+    <img src="assets/images/ynv_divider_frame.png" alt="" class="crest-divider-img" />
+    <div class="crest-overlay">
+      <div class="crest-stat">
+        <div class="crest-stat-num">500+</div>
+        <div class="crest-stat-label">Veterans strong</div>
+      </div>
+      <div class="crest-center">
+        <p class="crest-heading">Once Navy, Always Ready</p>
+        <p class="crest-sub">500+ veterans trained and standing by</p>
+      </div>
+      <div class="crest-stat">
+        <div class="crest-stat-num">24/7</div>
+        <div class="crest-stat-label">Always ready</div>
+      </div>
     </div>
   </div>
 </div>
