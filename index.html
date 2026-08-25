@@ -192,24 +192,30 @@
   #medallion-canvas{ position: relative; z-index: 2; width: 100%; height: 100%; display: block; }
 
   /* ---------- CREST DIVIDER ----------
-     Sits between the hero and the diver section. Uses the transparent
-     ynv_divider_frame.png ornamental frame as a full-width background
-     image, with real HTML text positioned on top so copy stays editable,
-     crisp at any zoom, and accessible — instead of baking text into
-     the image itself. */
+     Sits ON the seam between the hero and diver sections, overlapping
+     both — not a solid panel between them. ynv_divider_frame.png is a
+     transparent PNG: navy fill exists only *inside* the ornate gold
+     border in the image itself; everything outside that border is
+     transparent, so the hero/diver photos show through around it.
+     Real HTML text sits on top of the image so copy stays editable,
+     crisp at any zoom, and accessible. */
   .crest-divider{
     position: relative;
-    z-index: 2;
+    z-index: 5; /* above both the hero and diver sections' own content (z-index: 2) */
     width: 100%;
-    max-width: 1400px;
-    margin: -1px auto 0; /* -1px kills any subpixel seam with the video above */
+    max-width: 1100px;
+    margin: -70px auto -70px; /* pulls the frame up over the hero photo and
+                                  down over the diver photo so it straddles
+                                  the seam instead of sitting between them.
+                                  Tune this if your section heights change. */
+    pointer-events: none; /* clicks pass through to whatever's behind, since
+                              the frame itself has no interactive elements */
   }
   .crest-divider-img{
     width: 100%;
     height: auto;
     display: block;
     user-select: none;
-    pointer-events: none;
   }
   .crest-overlay{
     position: absolute;
@@ -218,7 +224,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 9%;
-    top: 6%;
+    top: 8%;
   }
   .crest-center{
     flex: 1;
@@ -229,7 +235,7 @@
     font-family: 'Cinzel', serif;
     font-weight: 600;
     color: var(--gold-100);
-    font-size: clamp(14px, 2.2vw, 26px);
+    font-size: clamp(13px, 2vw, 24px);
     letter-spacing: 0.06em;
     line-height: 1.2;
     text-transform: uppercase;
@@ -238,24 +244,24 @@
     font-family: 'EB Garamond', serif;
     font-style: italic;
     color: var(--text-dim);
-    font-size: clamp(10px, 1.1vw, 14px);
+    font-size: clamp(9px, 1vw, 13px);
     letter-spacing: 0.02em;
     margin-top: 4px;
   }
   .crest-stat{
     text-align: center;
-    min-width: 70px;
+    min-width: 60px;
     flex-shrink: 0;
   }
   .crest-stat-num{
     font-family: 'Cinzel', serif;
     font-weight: 600;
     color: var(--gold-300);
-    font-size: clamp(13px, 1.7vw, 20px);
+    font-size: clamp(12px, 1.5vw, 18px);
     line-height: 1.2;
   }
   .crest-stat-label{
-    font-size: clamp(8px, 0.85vw, 10px);
+    font-size: clamp(7px, 0.8vw, 9px);
     letter-spacing: 0.05em;
     color: var(--text-dim);
     text-transform: uppercase;
@@ -359,7 +365,8 @@
   }
 
   @media (max-width: 640px){
-    .crest-overlay{ padding: 0 5%; top: 4%; }
+    .crest-divider{ margin: -30px auto -30px; max-width: 92%; }
+    .crest-overlay{ padding: 0 5%; top: 5%; }
     .crest-stat{ display: none; }
   }
 
@@ -415,10 +422,14 @@
 </div>
 
 <!-- ============================================================
-     CREST DIVIDER — separates the hero from the diver section.
-     Frame graphic (ynv_divider_frame.png) is a transparent PNG;
-     the headline, subtext, and stat numbers are real HTML text
-     positioned on top so they stay sharp and editable.
+     CREST DIVIDER — sits ON the seam between the hero and diver
+     sections, overlapping both photos (see negative margins in
+     the .crest-divider CSS rule). ynv_divider_frame.png is
+     transparent outside its own gold border, so the hero video
+     shows through above it and the diver video shows through
+     below it — no solid panel behind the frame itself.
+     Headline, subtext, and stat numbers are real HTML text laid
+     on top so they stay sharp at any zoom and remain editable.
      ============================================================ -->
 <div class="crest-divider">
   <img src="assets/images/ynv_divider_frame.png" alt="" class="crest-divider-img" />
